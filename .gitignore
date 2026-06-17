@@ -1,0 +1,57 @@
+# ─── Next.js ────────────────────────────────────────────────────────────────
+.next/
+out/
+.vercel/
+
+# ─── Dependencies ────────────────────────────────────────────────────────────
+node_modules/
+
+# ─── Environment variables & secrets ─────────────────────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+# Keep the example template committed so teammates know what vars are required
+!.env.example
+
+# ─── TypeScript ───────────────────────────────────────────────────────────────
+*.tsbuildinfo
+next-env.d.ts
+
+# ─── Build outputs ────────────────────────────────────────────────────────────
+/dist/
+/build/
+
+# ─── OS artefacts ─────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ─── IDE / Editor settings ────────────────────────────────────────────────────
+.idea/
+# Ignore personal VS Code settings but allow shared workspace config
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+# (remove the above two exceptions if your team does not share VS Code config)
+
+# ─── Logs & diagnostics ───────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─── Testing & coverage ───────────────────────────────────────────────────────
+/coverage/
+/.nyc_output/
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
+*.pem
+.cache/

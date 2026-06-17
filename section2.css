@@ -1,0 +1,598 @@
+/* ============================================================
+   BALKAN REAL ESTATE INTELLIGENCE — section2.css
+   Section 2: The Blueprint Transformation Grid
+   ============================================================ */
+
+/* ─── Section Wrapper ───────────────────────────────────── */
+.section2 {
+  position: relative;
+  z-index: 1;
+  padding: 96px clamp(1.5rem, 5vw, 4rem) 96px;
+}
+
+/* Top divider line — aligns with the hero's bottom */
+.section2::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: clamp(200px, 50%, 600px);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-light) 30%, var(--border-light) 70%, transparent);
+  transition: background 500ms ease-in-out;
+}
+
+html.dark .section2::before {
+  background: linear-gradient(90deg, transparent, var(--border-dark) 30%, var(--border-dark) 70%, transparent);
+}
+
+/* ─── Section Header ─────────────────────────────────────── */
+.s2-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.s2-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(217, 119, 6, 0.09);
+  border: 1px solid rgba(217, 119, 6, 0.22);
+  border-radius: 9999px;
+  padding: 5px 18px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 22px;
+}
+
+.s2-h2 {
+  font-size: clamp(1.875rem, 4vw, 3.25rem);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--text-light);
+  margin-bottom: 14px;
+  transition: color 500ms ease-in-out;
+}
+
+html.dark .s2-h2 { color: var(--text-dark); }
+
+.s2-subtitle {
+  font-size: clamp(0.9375rem, 1.6vw, 1.0625rem);
+  font-weight: 400;
+  line-height: 1.68;
+  color: var(--muted-light);
+  max-width: 500px;
+  margin: 0 auto;
+  transition: color 500ms ease-in-out;
+}
+
+html.dark .s2-subtitle { color: var(--muted-dark); }
+
+/* ─── Segmented Toggle ───────────────────────────────────── */
+.s2-toggle-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 52px;
+}
+
+.s2-toggle {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  background: var(--surface-light);
+  border: 1.5px solid var(--border-light);
+  border-radius: 14px;
+  padding: 4px;
+  transition: background 500ms ease, border-color 500ms ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+html.dark .s2-toggle {
+  background: rgba(39, 39, 42, 0.75);
+  border-color: var(--border-dark);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+.s2-tab {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  padding: 12px 28px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  color: var(--muted-light);
+  transition: color 280ms ease;
+  white-space: nowrap;
+  outline: none;
+  font-family: inherit;
+  line-height: 1;
+}
+
+html.dark .s2-tab { color: var(--muted-dark); }
+
+.s2-tab.active { color: #fff; }
+
+/* The sliding orange bubble — pure CSS positioning */
+.s2-toggle-bubble {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  bottom: 4px;
+  width: calc(50% - 4px);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+  border-radius: 10px;
+  box-shadow: 0 4px 18px var(--accent-glow);
+  /* Overshoot spring: slightly beyond target and settle */
+  transition: transform 380ms cubic-bezier(0.34, 1.28, 0.64, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* When AI tab is active, bubble slides right by 100% of its own width */
+#section2[data-mode="ai"] .s2-toggle-bubble {
+  transform: translateX(100%);
+}
+
+/* ─── Main Container (matches mockup width) ──────────────── */
+.s2-container {
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .s2-container {
+    width: 92%;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
+
+/* ─── Analytics Grid ─────────────────────────────────────── */
+.s2-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .s2-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── LEFT: Counter Card ─────────────────────────────────── */
+.s2-counter-card {
+  position: relative;
+  background: var(--surface-light);
+  border: 1.5px solid var(--border-light);
+  border-radius: 20px;
+  min-height: 340px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: background 500ms ease, border-color 500ms ease, box-shadow 350ms ease;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+html.dark .s2-counter-card {
+  background: rgba(24, 24, 27, 0.72);
+  border-color: var(--border-dark);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
+
+/* Ambient inner glow — color switches with mode */
+.s2-counter-card::after {
+  content: '';
+  position: absolute;
+  top: -80px;
+  left: -80px;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  pointer-events: none;
+  transition: background 500ms ease;
+}
+
+#section2[data-mode="manual"] .s2-counter-card::after {
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.1) 0%, transparent 70%);
+}
+
+#section2[data-mode="ai"] .s2-counter-card::after {
+  background: radial-gradient(circle, rgba(217, 119, 6, 0.12) 0%, transparent 70%);
+}
+
+/* Both metric groups sit in the same space; only one is visible at a time */
+.s2-metrics {
+  position: absolute;
+  inset: 0;
+  padding: 48px 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 38px;
+  justify-content: center;
+  transition: opacity 320ms ease, transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.manual-metrics {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.ai-metrics {
+  opacity: 0;
+  transform: translateY(18px);
+  pointer-events: none;
+}
+
+#section2[data-mode="ai"] .manual-metrics {
+  opacity: 0;
+  transform: translateY(-18px);
+  pointer-events: none;
+}
+
+#section2[data-mode="ai"] .ai-metrics {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Individual metric */
+.s2-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.s2-metric-value {
+  font-size: clamp(3rem, 5.5vw, 4.75rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.s2-metric-value.danger {
+  color: #ef4444;
+  text-shadow: 0 0 48px rgba(239, 68, 68, 0.28);
+}
+
+.s2-metric-value.success {
+  color: var(--accent);
+  text-shadow: 0 0 48px var(--accent-glow);
+}
+
+.s2-metric-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--muted-light);
+  max-width: 260px;
+  transition: color 500ms ease;
+}
+
+html.dark .s2-metric-label { color: var(--muted-dark); }
+
+/* Mode accent bar at the bottom of the counter card */
+.s2-mode-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  transition: background 350ms ease, box-shadow 350ms ease;
+}
+
+#section2[data-mode="manual"] .s2-mode-bar {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+#section2[data-mode="ai"] .s2-mode-bar {
+  background: linear-gradient(90deg, var(--accent), var(--accent-dark));
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+
+/* ─── RIGHT: Glass Cards Column ──────────────────────────── */
+.s2-cards-col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.s2-glass-card {
+  position: relative;
+  background: var(--surface-light);
+  border: 1.5px solid var(--border-light);
+  border-radius: 16px;
+  padding: 24px 26px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:
+    background 500ms ease,
+    border-color 350ms ease,
+    box-shadow 350ms ease;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+html.dark .s2-glass-card {
+  background: rgba(24, 24, 27, 0.68);
+  border-color: var(--border-dark);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* AI mode — cards get a soft emerald glow border */
+#section2[data-mode="ai"] .s2-glass-card {
+  border-color: rgba(34, 197, 94, 0.22);
+  box-shadow:
+    0 0 0 1px rgba(34, 197, 94, 0.07),
+    0 8px 28px rgba(34, 197, 94, 0.07);
+}
+
+html.dark #section2[data-mode="ai"] .s2-glass-card {
+  border-color: rgba(34, 197, 94, 0.18);
+  box-shadow:
+    0 0 0 1px rgba(34, 197, 94, 0.1),
+    0 8px 28px rgba(34, 197, 94, 0.12);
+}
+
+.s2-card-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--muted-light);
+  margin-bottom: 14px;
+  transition: color 500ms ease;
+}
+
+html.dark .s2-card-label { color: var(--muted-dark); }
+
+/* ─── Card 1: Portal Pills ───────────────────────────────── */
+.s2-portal-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.s2-portal-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 7px;
+  border: 1px solid var(--border-light);
+  background: rgba(0, 0, 0, 0.025);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-light);
+  transition: border-color 500ms ease, background 500ms ease, color 500ms ease;
+}
+
+html.dark .s2-portal-pill {
+  border-color: var(--border-dark);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-dark);
+}
+
+.s2-portal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ─── Card 1: Status Badges (overlapping) ────────────────── */
+.s2-portal-card-body {
+  position: relative;
+  min-height: 52px;
+}
+
+.s2-card-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  transition:
+    opacity 300ms ease,
+    transform 340ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.s2-card-status svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Manual status — red warning */
+.manual-status {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  color: #ef4444;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* AI status — green verified */
+.ai-status {
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.18);
+  color: #22c55e;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+#section2[data-mode="ai"] .manual-status {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+#section2[data-mode="ai"] .ai-status {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ─── Card 2: Financial Impact ───────────────────────────── */
+.s2-finance-content {
+  position: relative;
+  min-height: 92px;
+}
+
+.s2-finance-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  transition:
+    opacity 300ms ease,
+    transform 340ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.manual-finance {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ai-finance {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+#section2[data-mode="ai"] .manual-finance {
+  opacity: 0;
+  transform: translateY(-12px);
+}
+
+#section2[data-mode="ai"] .ai-finance {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Flatline (manual) */
+.s2-flatline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.s2-flatline-text {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #ef4444;
+  white-space: nowrap;
+}
+
+.s2-flatline-line {
+  flex: 1;
+  height: 2px;
+  border-radius: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(239, 68, 68, 0.45) 0px,
+    rgba(239, 68, 68, 0.45) 6px,
+    transparent 6px,
+    transparent 13px
+  );
+}
+
+/* AI Finance */
+.s2-trend-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  width: 100%;
+}
+
+.s2-trend-chart {
+  width: 100%;
+  height: 52px;
+  overflow: visible;
+}
+
+/* Trend path — driven by JS inline style for the draw animation */
+.s2-trend-path {
+  fill: none;
+  stroke: #22c55e;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+}
+
+.s2-trend-area {
+  opacity: 0;
+}
+
+/* Unlock badge with continuous pulse */
+.s2-unlock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(34, 197, 94, 0.09);
+  border: 1px solid rgba(34, 197, 94, 0.22);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #22c55e;
+  align-self: flex-start;
+}
+
+.s2-unlock-badge svg {
+  width: 13px;
+  height: 13px;
+  fill: #22c55e;
+  stroke: none;
+  flex-shrink: 0;
+}
+
+#section2[data-mode="ai"] .s2-unlock-badge {
+  animation: s2-badge-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes s2-badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.22); }
+  50%       { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0); }
+}
+
+/* ─── Mobile ─────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .section2 { padding: 72px clamp(1rem, 4vw, 1.5rem) 72px; }
+
+  .s2-counter-card { min-height: 280px; }
+
+  .s2-metrics { padding: 36px 28px; gap: 28px; }
+
+  .s2-metric-value { font-size: clamp(2.5rem, 10vw, 3.5rem); }
+
+  .s2-glass-card { padding: 20px 20px; }
+}
+
+@media (max-width: 640px) {
+  .s2-toggle { width: 100%; max-width: 380px; }
+  .s2-tab { padding: 11px 14px; font-size: 0.8125rem; }
+  .s2-portal-row { gap: 6px; }
+  .s2-portal-pill { font-size: 0.6875rem; padding: 4px 9px; }
+  .s2-flatline { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .s2-flatline-line { width: 100%; }
+}
