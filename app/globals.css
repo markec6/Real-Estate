@@ -2053,3 +2053,287 @@ html.dark .pricing-trust-item { color: var(--muted-dark); }
   .pricing-trust-row { gap: 20px; }
   .pricing-trust-item { font-size: 0.75rem; }
 }
+
+/* ============================================================
+   SECTION 5 — Testimonials Bento Grid (Testimonials.tsx)
+   ============================================================ */
+
+.testi-section {
+  position: relative;
+  z-index: 1;
+  padding: 96px clamp(1.5rem, 5vw, 4rem) 96px;
+}
+
+.testi-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: clamp(200px, 50%, 600px);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-light) 30%, var(--border-light) 70%, transparent);
+  transition: background 500ms ease-in-out;
+}
+
+html.dark .testi-section::before {
+  background: linear-gradient(90deg, transparent, var(--border-dark) 30%, var(--border-dark) 70%, transparent);
+}
+
+.testi-header { text-align: center; margin-bottom: 56px; }
+
+.testi-subtitle {
+  font-size: clamp(0.9375rem, 1.6vw, 1.0625rem);
+  font-weight: 400;
+  line-height: 1.68;
+  color: var(--muted-light);
+  max-width: 620px;
+  margin: 0 auto;
+  transition: color 500ms ease-in-out;
+}
+
+html.dark .testi-subtitle { color: var(--muted-dark); }
+
+.testi-container { width: 100%; }
+
+@media (min-width: 1024px) {
+  .testi-container { width: 92%; max-width: 1400px; margin: 0 auto; }
+}
+
+/* ── Bento grid ─────────────────────────────────────────────── */
+
+.testi-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 768px) {
+  .testi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .testi-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+
+  .testi-card-feature { grid-column: span 2; }
+}
+
+/* ── Testimonial card ───────────────────────────────────────── */
+
+.testi-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: #ffffff;
+  border: 1.5px solid var(--border-light);
+  border-radius: 20px;
+  padding: clamp(1.25rem, 4vw, 1.75rem) clamp(1rem, 4vw, 1.75rem);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
+  transition:
+    background 500ms ease,
+    border-color 350ms ease,
+    box-shadow 300ms ease,
+    transform 300ms ease;
+}
+
+html.dark .testi-card {
+  background: #18181b;
+  border-color: var(--border-dark);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.28);
+}
+
+.testi-card-feature {
+  border-color: rgba(217, 119, 6, 0.28);
+  box-shadow:
+    0 0 0 1px rgba(217, 119, 6, 0.08),
+    0 4px 28px rgba(217, 119, 6, 0.1),
+    0 8px 32px rgba(0, 0, 0, 0.06);
+}
+
+html.dark .testi-card-feature {
+  border-color: rgba(217, 119, 6, 0.32);
+  box-shadow:
+    0 0 0 1px rgba(217, 119, 6, 0.12),
+    0 4px 32px rgba(217, 119, 6, 0.14),
+    0 8px 36px rgba(0, 0, 0, 0.35);
+}
+
+@media (hover: hover) and (min-width: 1024px) {
+  .testi-card:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.1),
+      0 4px 16px rgba(0, 0, 0, 0.06);
+  }
+
+  html.dark .testi-card:hover {
+    box-shadow:
+      0 12px 44px rgba(0, 0, 0, 0.45),
+      0 4px 20px rgba(0, 0, 0, 0.25);
+  }
+
+  .testi-card-feature:hover {
+    box-shadow:
+      0 0 0 1px rgba(217, 119, 6, 0.14),
+      0 12px 44px rgba(217, 119, 6, 0.16),
+      0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  html.dark .testi-card-feature:hover {
+    box-shadow:
+      0 0 0 1px rgba(217, 119, 6, 0.18),
+      0 12px 48px rgba(217, 119, 6, 0.2),
+      0 8px 36px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* ── Card header row ────────────────────────────────────────── */
+
+.testi-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.testi-author-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.testi-avatar {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.18), rgba(194, 65, 12, 0.12));
+  border: 1.5px solid rgba(217, 119, 6, 0.32);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+html.dark .testi-avatar {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.22), rgba(194, 65, 12, 0.16));
+  border-color: rgba(217, 119, 6, 0.38);
+  color: #fbbf24;
+}
+
+.testi-author-meta { min-width: 0; }
+
+.testi-name {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-light);
+  line-height: 1.3;
+  transition: color 500ms ease-in-out;
+}
+
+html.dark .testi-name { color: var(--text-dark); }
+
+.testi-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted-light);
+  margin-top: 2px;
+  line-height: 1.35;
+  transition: color 500ms ease-in-out;
+}
+
+html.dark .testi-title { color: var(--muted-dark); }
+
+.testi-region {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(120, 113, 108, 0.22);
+  background: rgba(120, 113, 108, 0.06);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-light);
+  transition: border-color 500ms ease, background 500ms ease, color 500ms ease;
+}
+
+html.dark .testi-region {
+  border-color: rgba(217, 119, 6, 0.22);
+  background: rgba(217, 119, 6, 0.08);
+  color: var(--muted-dark);
+}
+
+/* ── Star rating ──────────────────────────────────────────────── */
+
+.testi-stars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.testi-star {
+  width: 16px;
+  height: 16px;
+  fill: var(--accent);
+  flex-shrink: 0;
+}
+
+html.dark .testi-star { fill: #f59e0b; }
+
+/* ── Quote body ───────────────────────────────────────────────── */
+
+.testi-quote {
+  margin: 0;
+}
+
+.testi-quote p {
+  font-size: clamp(0.875rem, 1.5vw, 0.9375rem);
+  font-weight: 400;
+  line-height: 1.72;
+  color: var(--muted-light);
+  transition: color 500ms ease-in-out;
+}
+
+html.dark .testi-quote p { color: var(--muted-dark); }
+
+.testi-card-feature .testi-quote p {
+  font-size: clamp(0.9375rem, 1.6vw, 1rem);
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+html.dark .testi-card-feature .testi-quote p {
+  color: var(--text-dark);
+}
+
+/* ── Mobile refinements ───────────────────────────────────────── */
+
+@media (max-width: 1023px) {
+  .testi-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .testi-section { padding: 72px clamp(1rem, 4vw, 1.5rem) 72px; }
+  .testi-header { margin-bottom: 40px; }
+  .testi-card { padding: 20px clamp(1rem, 4vw, 1.5rem); }
+  .testi-avatar { width: 40px; height: 40px; font-size: 0.75rem; }
+}
