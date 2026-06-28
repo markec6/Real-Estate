@@ -4,6 +4,7 @@ import Comparison from '@/components/Comparison'
 import HowItWorks from '@/components/HowItWorks'
 import Pricing from '@/components/Pricing'
 import Testimonials from '@/components/Testimonials'
+import FAQ from '@/components/FAQ'
 
 export default function Page() {
   return (
@@ -15,6 +16,7 @@ export default function Page() {
         <HowItWorks />
         <Pricing />
         <Testimonials />
+        <FAQ />
       </main>
     </div>
   )
