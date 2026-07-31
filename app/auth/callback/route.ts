@@ -38,7 +38,12 @@ export async function GET(request: NextRequest) {
       getAll: () => request.cookies.getAll(),
       setAll: (cookiesToSet) => {
         cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options)
+          response.cookies.set(name, value, {
+            ...options,
+            sameSite: options.sameSite ?? 'lax',
+            secure: true,
+            path: options.path ?? '/',
+          })
         })
       },
     },

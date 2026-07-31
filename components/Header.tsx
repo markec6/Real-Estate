@@ -45,18 +45,12 @@ function getMetadataProfileImage(user: User) {
 }
 
 function publishExtensionSession(session: unknown) {
+  // Content script (websiteAuthBridge) listens for this and syncs into chrome.storage.
+  // Target is always the page origin; the bridge validates against allowed website origins.
   window.postMessage(
     {
       type: EXTENSION_AUTH_EVENT,
-      sessionValue: session
-        ? JSON.stringify({
-            currentSession: session,
-            expiresAt:
-              typeof session === 'object' && session !== null && 'expires_at' in session
-                ? (session as { expires_at?: number }).expires_at
-                : null,
-          })
-        : null,
+      sessionValue: session ? JSON.stringify(session) : null,
     },
     window.location.origin,
   )

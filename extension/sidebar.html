@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="sr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Balkan Real Estate Intelligence</title>
+    <link rel="stylesheet" href="sidebar.css">
+    <script src="vendor/supabase.js" defer></script>
+    <script src="config.js" defer></script>
+    <script src="services/mockAiService.js" defer></script>
+    <script src="sidebar.js" defer></script>
+  </head>
+  <body>
+    <div class="sidebar-shell">
+      <main class="sidebar-content" aria-label="Balkan Real Estate Intelligence">
+        <header class="header-section">
+          <div class="brand-row" aria-label="Balkan Real Estate Intelligence">
+            <div class="brand-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="img">
+                <path d="M4 11.2 12 4l8 7.2v8.1a.7.7 0 0 1-.7.7h-4.2v-5.2H8.9V20H4.7a.7.7 0 0 1-.7-.7v-8.1Z"></path>
+                <path d="M15.2 5.9V4h2.7v4.4"></path>
+              </svg>
+            </div>
+            <div class="brand-copy">
+              <h1>Balkan Real Estate</h1>
+              <p>INTELLIGENCE PLATFORM</p>
+            </div>
+            <button
+              class="dev-state-toggle"
+              type="button"
+              aria-label="Prikaži početni ekran za skeniranje"
+              aria-pressed="false"
+              title="Prikaži početni ekran za skeniranje"
+            ></button>
+          </div>
+
+          <section id="profile-card" class="profile-card is-loading" aria-label="Korisnički profil">
+            <div class="profile-top">
+              <div class="avatar-wrap" aria-hidden="true">
+                <span id="profile-avatar" class="avatar">...</span>
+                <span id="profile-status-dot" class="online-dot"></span>
+              </div>
+              <div class="profile-copy">
+                <p id="profile-label" class="profile-label">Učitavanje profila...</p>
+                <p id="profile-subtitle" class="profile-subtitle">Proveravamo Supabase sesiju</p>
+                <p id="profile-email" class="profile-email"></p>
+              </div>
+              <a id="profile-action" href="#" class="upgrade-link" target="_blank" rel="noopener" aria-label="Otvori nalog na sajtu">Prijava</a>
+            </div>
+            <div class="credits-row">
+              <span id="credits-label">Credits: 0 / 20</span>
+              <span id="credits-percent">0%</span>
+            </div>
+            <div id="credits-progress" class="progress-track" aria-label="Krediti: 0 od 20">
+              <div id="credits-fill" class="progress-fill credits-fill"></div>
+            </div>
+          </section>
+        </header>
+
+        <section id="scan-state" class="state-panel scan-state" aria-label="Početni ekran za skeniranje">
+          <button id="scan-button" class="radar-scan-button" type="button" aria-busy="false">
+            <span class="radar-pulse" aria-hidden="true"></span>
+            <span class="radar-circle">
+              <span class="radar-ring" aria-hidden="true"></span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"></path>
+              </svg>
+            </span>
+            <span class="scan-label">Skeniraj Stranicu</span>
+            <span class="scan-helper">Pokreni lokalnu AI detekciju oglasa na aktivnoj stranici</span>
+          </button>
+        </section>
+
+        <section id="results-state" class="state-panel listings-state is-hidden" aria-label="Pronađeni oglasi" aria-hidden="true">
+          <div class="listings-summary" aria-live="polite">
+            <div>
+              <p class="section-kicker">DETEKTOVANI OGLASI</p>
+              <h2>Pronađeno 3 oglasa na stranici</h2>
+            </div>
+            <span class="summary-badge">3 aktivna</span>
+          </div>
+
+          <div id="listings-accordion" class="listings-accordion" aria-label="Accordion lista pronađenih oglasa"></div>
+        </section>
+      </main>
+
+      <footer class="cta-footer">
+        <a id="dashboard-link" class="primary-cta" href="#" target="_blank" rel="noopener" aria-label="Otvori detaljnu istoriju cena na sajtu">
+          <span>Pogledaj Detaljnu Istoriju na Sajtu</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 17 17 7"></path>
+            <path d="M9 7h8v8"></path>
+          </svg>
+        </a>
+      </footer>
+      <div id="toast" class="toast" role="status" aria-live="polite" aria-hidden="true"></div>
+    </div>
+  </body>
+</html>

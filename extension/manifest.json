@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Balkan Real Estate Intelligence",
+  "version": "1.0.1",
+  "description": "AI asistent za skeniranje i analizu izvornih oglasa za nekretnine.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "sidePanel",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost:3000/*",
+        "https://real-estate-lac-ten.vercel.app/*"
+      ],
+      "js": [
+        "websiteAuthBridge.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidebar.html"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}

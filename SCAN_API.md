@@ -2,6 +2,10 @@
 
 `POST /api/scan/analyze` accepts listing data already extracted by the browser extension and returns a structured Serbian-language real estate analysis.
 
+## Auth session bridge
+
+`GET /api/auth/session` returns the current Supabase session for the website origin (cookie credentials) or a bearer token. Allowed CORS origins include `https://real-estate-lac-ten.vercel.app`, `http://localhost:3000`, and `chrome-extension://*` IDs. The Chrome extension content script syncs this into `chrome.storage.local`.
+
 ## Authentication
 
 Send the existing Supabase access token from the extension session:
