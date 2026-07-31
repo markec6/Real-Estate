@@ -25,6 +25,19 @@ $excludedNames = @(
   "extension.zip"
 )
 
+$requiredIcons = @(
+  "icons\icon16.png",
+  "icons\icon48.png",
+  "icons\icon128.png"
+)
+
+foreach ($relativeIconPath in $requiredIcons) {
+  $iconPath = Join-Path $extensionRoot $relativeIconPath
+  if (-not (Test-Path -LiteralPath $iconPath)) {
+    throw "Missing required icon: $iconPath"
+  }
+}
+
 $itemsToZip = Get-ChildItem -LiteralPath $extensionRoot -Force |
   Where-Object { $excludedNames -notcontains $_.Name }
 
@@ -44,13 +57,55 @@ try {
     }
   }
 
+  # Chrome requires ZIP entry names with forward slashes. ZipFile.CreateFromDirectory
+  # on Windows can emit backslashes, which makes Chrome fail to resolve icons.
+  Add-Type -AssemblyName System.IO.Compression
   Add-Type -AssemblyName System.IO.Compression.FileSystem
-  [System.IO.Compression.ZipFile]::CreateFromDirectory(
-    $stagingRoot,
-    $temporaryZipPath,
-    [System.IO.Compression.CompressionLevel]::Optimal,
-    $false
+
+  $zipStream = [System.IO.File]::Open($temporaryZipPath, [System.IO.FileMode]::CreateNew)
+  try {
+    $archive = New-Object System.IO.Compression.ZipArchive(
+      $zipStream,
+      [System.IO.Compression.ZipArchiveMode]::Create,
+      $false
+    )
+
+    try {
+      $files = Get-ChildItem -LiteralPath $stagingRoot -Recurse -File
+      foreach ($file in $files) {
+        $relativePath = $file.FullName.Substring($stagingRoot.Length).TrimStart('\', '/')
+        $entryName = $relativePath.Replace('\', '/')
+        [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+          $archive,
+          $file.FullName,
+          $entryName,
+          [System.IO.Compression.CompressionLevel]::Optimal
+        ) | Out-Null
+      }
+    } finally {
+      $archive.Dispose()
+    }
+  } finally {
+    $zipStream.Dispose()
+  }
+
+  $stagedIcons = @(
+    "icons/icon16.png",
+    "icons/icon48.png",
+    "icons/icon128.png"
   )
+
+  $verifyZip = [System.IO.Compression.ZipFile]::OpenRead($temporaryZipPath)
+  try {
+    $entryNames = @($verifyZip.Entries | ForEach-Object { $_.FullName })
+    foreach ($iconEntry in $stagedIcons) {
+      if ($entryNames -notcontains $iconEntry) {
+        throw "Built ZIP is missing icon entry '$iconEntry'. Found: $($entryNames -join ', ')"
+      }
+    }
+  } finally {
+    $verifyZip.Dispose()
+  }
 
   Move-Item -LiteralPath $temporaryZipPath -Destination $resolvedOutputPath -Force
 } finally {
