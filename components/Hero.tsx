@@ -1,9 +1,56 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import AuthModal, { type AuthMode } from './AuthModal'
+import { supabase } from '@/lib/supabase/client'
+
+const EXTENSION_INSTALL_URL =
+  process.env.NEXT_PUBLIC_EXTENSION_INSTALL_URL?.trim() || '/install-extension'
 
 export default function Hero() {
   const sparklineRef = useRef<SVGSVGElement>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(false)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [authMode, setAuthMode] = useState<AuthMode>('sign-up')
+
+  useEffect(() => {
+    let mounted = true
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setIsAuthenticated(Boolean(data.session))
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(Boolean(session))
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  async function handleHeroCtaClick() {
+    if (checkingSession) return
+    setCheckingSession(true)
+
+    try {
+      const { data, error } = await supabase.auth.getSession()
+
+      if (!error && data.session) {
+        window.location.assign(EXTENSION_INSTALL_URL)
+        return
+      }
+
+      setAuthMode('sign-up')
+      setAuthModalOpen(true)
+    } finally {
+      setCheckingSession(false)
+    }
+  }
 
   useEffect(() => {
     function buildSparkline() {
@@ -76,17 +123,27 @@ export default function Hero() {
 
         {/* CTA */}
         <div className="cta-wrap anim-cta">
-          <a href="#" className="cta-btn">
+          <button
+            type="button"
+            className="cta-btn"
+            onClick={handleHeroCtaClick}
+            disabled={checkingSession}
+            aria-busy={checkingSession}
+          >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
             </svg>
-            Isprobaj Besplatno — Beta
-          </a>
+            {checkingSession
+              ? 'Provera naloga...'
+              : isAuthenticated
+                ? 'Dodaj u Chrome / Pokreni Ekstenziju'
+                : 'Instaliraj Ekstenziju — 5 Besplatnih Kredita'}
+          </button>
           <p className="cta-sub">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
-            Nema kreditne kartice · Odmah spreman
+            Nema kreditne kartice · 5 besplatnih analiza odmah
           </p>
         </div>
 
@@ -209,6 +266,15 @@ export default function Hero() {
           </div>
         </div>
       </div>
+
+      <AuthModal
+        open={authModalOpen}
+        mode={authMode}
+        onOpenChange={setAuthModalOpen}
+        onModeChange={setAuthMode}
+        banner="Registrujte se za 5 besplatnih kredita"
+        postAuthRedirectUrl={EXTENSION_INSTALL_URL}
+      />
     </section>
   )
 }

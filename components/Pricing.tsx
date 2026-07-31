@@ -1,18 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import { PLAN_CREDITS, type PlanTier } from '@/constants/plans'
 
 type Billing = 'monthly' | 'annual'
 
-type FeatureItem = string | { strong: string; rest: string }
-
 interface Plan {
   id: string
+  tier: PlanTier
   name: string
+  subtitle: string
   price: Record<Billing, string>
   period: Record<Billing, string>
-  hook?: string
-  features: FeatureItem[]
+  features: string[]
   cta: string
   btnClass: string
   popular?: boolean
@@ -20,30 +20,35 @@ interface Plan {
 
 const plans: Plan[] = [
   {
-    id: 'free',
-    name: 'Probni Period',
-    price: { monthly: 'Besplatno', annual: 'Besplatno' },
-    period: { monthly: '7 dana · bez kartice', annual: '7 dana · bez kartice' },
-    hook: 'Bez unosa kreditne kartice. Aktivacija za 10 sekundi.',
+    id: 'starter',
+    tier: 'STARTER',
+    name: 'STARTER',
+    subtitle: 'Idealno za individualne kupce i manje investitore',
+    price: { monthly: '19 €', annual: '15 €' },
+    period: { monthly: '/ mesec', annual: '/ mesec · godišnja naplata' },
     features: [
-      'Skeniranje 3 glavna portala',
-      'Osnovni AI filter duplikata',
-      'Pametna sveska za do 20 oglasa',
+      '200 AI skeniranja i analiza oglasa mesečno',
+      'Podrška za sve glavne balkanske portale',
+      'Detekcija izmena cena i istorija oglasa',
+      'Napredna AI analiza opisa i rizika',
+      'Čuvanje oglasa direktno u lični korisnički panel',
     ],
-    cta: 'Započni Besplatno',
+    cta: 'Izaberi Starter Paket',
     btnClass: 'pricing-btn-free',
   },
   {
     id: 'pro',
-    name: 'Agent Pro',
+    tier: 'PRO',
+    name: 'AGENT PRO',
+    subtitle: 'Za aktivne agente, investitore i brokere',
     price: { monthly: '49 €', annual: '39 €' },
     period: { monthly: '/ mesec', annual: '/ mesec · godišnja naplata' },
     features: [
-      { strong: 'NEOGRANIČENO', rest: ' AI skeniranje svih 14 portala' },
-      'Instant otključavanje telefona vlasnika',
-      'Istorija promjena cijena i hronologija oglasa',
-      'Automatska filtracija agencijskih kopija',
-      'Prioritetna Viber/WhatsApp podrška',
+      '600 AI skeniranja i analiza oglasa mesečno',
+      'Sve iz STARTER paketa',
+      'Instant otključavanje i provera telefona vlasnika',
+      'Automatizovana filtracija agencijskih duplikata',
+      'Prioritetni AI red za brže rezultate skeniranja',
     ],
     cta: 'Postani Pro Agent',
     btnClass: 'pricing-btn-pro',
@@ -51,14 +56,17 @@ const plans: Plan[] = [
   },
   {
     id: 'team',
-    name: 'Agencija / Tim',
-    price: { monthly: '129 €', annual: '99 €' },
-    period: { monthly: '/ mesec · do 10 agenata', annual: '/ mesec · do 10 agenata' },
+    tier: 'TEAM',
+    name: 'AGENCIJA / TIM',
+    subtitle: 'Za timove i agencije za nekretnine (do 10 agenata)',
+    price: { monthly: '129 €', annual: '103 €' },
+    period: { monthly: '/ mesec', annual: '/ mesec · godišnja naplata' },
     features: [
+      '2.000 AI skeniranja i analiza mesečno',
       'Sve iz AGENT PRO paketa',
       'Zajednički timski panel bez duplikacije poziva',
       'Menadžerska analitika efikasnosti tima',
-      'Dedicated Account Manager',
+      'Lični menadžer naloga i prioritetna podrška',
     ],
     cta: 'Nadogradi Ceo Tim',
     btnClass: 'pricing-btn-team',
@@ -71,21 +79,15 @@ const trustItems = [
   { emoji: '🤝', text: 'Bez skrivenih ugovornih obaveza' },
 ]
 
+function formatCredits(credits: number) {
+  return credits.toLocaleString('sr-RS')
+}
+
 function CheckIcon() {
   return (
     <svg className="pricing-check" viewBox="0 0 24 24" aria-hidden="true">
       <polyline points="20 6 9 17 4 12" />
     </svg>
-  )
-}
-
-function FeatureText({ f }: { f: FeatureItem }) {
-  if (typeof f === 'string') return <>{f}</>
-  return (
-    <>
-      <strong className="pricing-feature-highlight">{f.strong}</strong>
-      {f.rest}
-    </>
   )
 }
 
@@ -176,9 +178,13 @@ export default function Pricing() {
 
               <p className="pricing-period">{plan.period[billing]}</p>
 
-              {plan.hook && <p className="pricing-hook">{plan.hook}</p>}
+              <p className="pricing-hook">{plan.subtitle}</p>
 
               <hr className="pricing-divider" />
+
+              <div className="pricing-credit-badge">
+                <span>{formatCredits(PLAN_CREDITS[plan.tier])} AI Kredita mesečno</span>
+              </div>
 
               {/* Features */}
               <ul className="pricing-features" aria-label={`${plan.name} features`}>
@@ -186,7 +192,7 @@ export default function Pricing() {
                   <li key={i} className="pricing-feature">
                     <CheckIcon />
                     <span className="pricing-feature-text">
-                      <FeatureText f={f} />
+                      {f}
                     </span>
                   </li>
                 ))}

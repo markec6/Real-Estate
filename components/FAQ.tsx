@@ -19,9 +19,9 @@ const faqItems: FaqItem[] = [
       'AI algoritam analizira kompletan tekst oglasa, strukturu rečenica, priložene brojeve telefona i istoriju oglašivača. Ako sistem detektuje prepoznatljive agencijske fraze ili brojeve koji pripadaju bazi registrovanih posrednika, oglas se automatski filtrira. Vama ostaju isključivo izvorni vlasnici.',
   },
   {
-    question: 'Da li stvarno nije potrebna kreditna kartica za probni period?',
+    question: 'Koliko AI kredita dobijam uz svaki paket?',
     answer:
-      'Da, apsolutno. Prilikom kreiranja naloga odmah dobijate punih 7 dana besplatnog pristupa. Nema nikakvih skrivenih troškova, sitnih slova niti tražimo da unesete podatke o vašoj kartici.',
+      'STARTER paket uključuje 200 AI kredita mesečno, AGENT PRO uključuje 600 AI kredita mesečno, a AGENCIJA / TIM uključuje 2.000 AI kredita mesečno.',
   },
   {
     question: 'Kako se instalira Chrome ekstenzija i da li radi na Mac-u?',

@@ -37,7 +37,7 @@ function ExtensionMockup() {
         <div className="hiw-ext-row" style={{ justifyContent: 'space-between' }}>
           <span className="hiw-ext-status">Aktivan i skenira</span>
           <span style={{ fontSize: '0.6rem', color: 'var(--accent)', fontWeight: 700 }}>
-            7 dana besplatno
+            5 besplatnih kredita
           </span>
         </div>
       </div>
@@ -157,8 +157,8 @@ export default function HowItWorks() {
               <h3 className="hiw-step-title">Instalacija u 1 klik</h3>
               <p className="hiw-step-body">
                 Dodajte ekstenziju u vaš Chrome browser za manje od 10 sekundi.
-                Bez unošenja kreditne kartice, odmah dobijate 7 dana potpunog
-                besplatnog pristupa.
+                Bez unošenja kreditne kartice, registracijom odmah dobijate 5
+                besplatnih kredita na poklon.
               </p>
             </div>
           </article>
