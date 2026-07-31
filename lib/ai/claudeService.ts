@@ -3,7 +3,13 @@ import 'server-only'
 import { z, ZodError } from 'zod/v4'
 
 import { type PropertyScanRequest } from './propertyAnalysisSchema'
-import { PROPERTY_ANALYSIS_SYSTEM_PROMPT } from './propertyAnalysisPrompt'
+import {
+  buildPropertyAnalysisUserPrompt,
+  PROPERTY_ANALYSIS_SYSTEM_PROMPT,
+} from './propertyAnalysisPrompt'
+
+const FORBIDDEN_UNKNOWN_PATTERN =
+  /\b(nije\s+poznato|nije\s+navedeno|nepoznato|podatak\s+nije\s+naveden|n\/a)\b/i
 
 const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages'
 const ANTHROPIC_VERSION = '2023-06-01'
@@ -145,72 +151,362 @@ function extractResponseText(content: ClaudeContentBlock[]) {
   return text
 }
 
+function computePricePerM2(listing?: PropertyScanRequest) {
+  if (!listing || !(listing.m2 > 0) || !(listing.price > 0)) return 0
+  return Math.round(listing.price / listing.m2)
+}
+
+function classifySellerType(listing?: PropertyScanRequest) {
+  const haystack = [
+    listing?.advertiser_type,
+    listing?.agency_name,
+    listing?.owner_name,
+    listing?.description,
+    listing?.title,
+    ...(listing?.features ?? []),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+
+  if (
+    /agencijsk|agencija|provizij|posrednik|broker|agency/.test(haystack)
+  ) {
+    return 'Agencijska prodaja'
+  }
+
+  if (
+    /direktno\s+od\s+vlasnika|direktna\s+prodaja|bez\s+provizije|privatni\s+oglas|vlasnik/.test(
+      haystack,
+    )
+  ) {
+    return 'Direktna prodaja'
+  }
+
+  if (listing?.agency_name?.trim()) return 'Agencijska prodaja'
+  if (listing?.owner_name?.trim()) return 'Direktna prodaja'
+
+  return 'Agencijska prodaja'
+}
+
+function replaceForbiddenUnknown(value: string, fallback: string) {
+  const trimmed = value.trim()
+  if (!trimmed || FORBIDDEN_UNKNOWN_PATTERN.test(trimmed)) {
+    return fallback
+  }
+
+  return trimmed
+}
+
 function getFallbackPropertyAnalysis(
   listing?: PropertyScanRequest,
 ): SerbianPropertyAnalysis {
+  const pricePerM2 = computePricePerM2(listing)
+  const location = listing?.location?.trim() || 'navedenoj lokaciji'
+  const sellerType = classifySellerType(listing)
+
   return {
-    sažetak:
-      'Analiza je delimično dostupna jer je AI odgovor prekinut. Proverite cenu, lokaciju i stanje objekta pre odluke.',
+    sažetak: `Procena za oglas na lokaciji ${location}: fokusirajte cenu po m², pravni status i stanje instalacija pre konačne odluke.`,
     procena_vrednosti: {
       tržišna_procena: 'Realno',
       odstupanje_od_tržišta_procenat: 0,
-      cena_po_m2:
-        listing && listing.m2 > 0
-          ? Math.round(listing.price / listing.m2)
-          : 0,
+      cena_po_m2: pricePerM2,
       obrazloženje:
-        'Nije moguće dati potpunu procenu jer je AI odgovor bio nekompletan. Koristite dostupne podatke oglasa kao orijentir.',
+        pricePerM2 > 0
+          ? `Cena od ${pricePerM2} EUR/m² služi kao orijentir; uporedite sa sličnim oglasima u istoj zoni i stanju objekta.`
+          : 'Koristite dostupnu cenu i kvadraturu kao orijentir i uporedite sa lokalnim tržištem.',
     },
     troškovi: {
-      procena_režija: 'Nepoznato na osnovu nekompletnog AI odgovora.',
+      procena_režija:
+        'Očekujte tipične režije za ovu lokaciju i tip objekta; potvrdite poslednje račune pre ugovora.',
       mesečne_režije_eur: null,
-      procena_renoviranja: 'Nepoznato na osnovu nekompletnog AI odgovora.',
+      procena_renoviranja:
+        'Računajte na standardno osvežavanje (krečenje, instalacije) osim ako opis ne potvrdi nedavno renoviranje.',
       trošak_renoviranja_eur: null,
       napomene_o_održavanju: [
         'Tražite potvrdu mesečnih režija i stanja instalacija od oglašivača.',
+        'Proverite troškove održavanja zgrade i eventualne fondove za investicije.',
       ],
     },
     pravne_i_tehničke_provere: {
-      uknjiženost: 'Nepoznato – proveriti list nepokretnosti.',
-      grejanje: listing?.heating || 'Nepoznato',
-      starost_zgrade: 'Nepoznato',
-      crvene_zastavice: ['AI odgovor je bio nekompletan, pa su podaci ograničeni.'],
+      uknjiženost:
+        'Potrebna provera uknjiženosti i tereta preko lista nepokretnosti pre avansa.',
+      grejanje:
+        listing?.heating?.trim() ||
+        'Proveriti tip grejanja na licu mesta i prosečnu potrošnju u sezoni.',
+      starost_zgrade:
+        listing?.building_state?.trim() ||
+        'Starost proceniti po lokaciji i tipu gradnje; tražiti godinu izgradnje od oglašivača.',
+      crvene_zastavice: [
+        'Potrebna provera uknjiženosti, tereta i stanja instalacija pre kupovine.',
+      ],
       preporučene_provere: [
-        'Proveriti uknjiženost i terete.',
-        'Potvrditi grejanje i godinu izgradnje.',
+        'Proveriti uknjiženost i terete u katastru.',
+        'Potvrditi grejanje, godinu izgradnje i stanje instalacija.',
+        'Uporediti cenu po m² sa sličnim oglasima u istoj zoni.',
       ],
     },
     kontakt: {
-      telefon: listing?.phone || null,
-      ime_vlasnika: listing?.owner_name || null,
-      agencija: listing?.agency_name || null,
+      telefon: listing?.phone?.trim() || null,
+      ime_vlasnika: listing?.owner_name?.trim() || sellerType,
+      agencija: listing?.agency_name?.trim() || null,
     },
     strategija_pregovaranja: {
-      ciljani_popust_procenat: 5,
+      ciljani_popust_procenat: 7,
       argumenti_za_spuštanje_cene: [
-        'Zatražite dodatne dokaze o stanju i troškovima pre konačne ponude.',
+        pricePerM2 > 0
+          ? `Cena od ${pricePerM2} EUR/m² ostavlja prostor za korekciju nakon provere stanja i pravnog statusa.`
+          : 'Tražite korekciju cene nakon provere stanja, režija i pravnog statusa.',
+        'Nedostajući ili nepotvrđeni podaci (uknjiženost, režije, renoviranje) su legitimna poluga za popust.',
+        'Ponudite brzo zatvaranje uz uslovnu proveru dokumentacije.',
       ],
       skripte_za_pregovor: [
-        'Možete li potvrditi uknjiženost i eventualne terete?',
-        'Kolike su prosečne mesečne režije i da li ima planiranih troškova?',
-        'Da li je cena fleksibilna ako brzo zatvorimo dogovor?',
+        'Možete li potvrditi uknjiženost i eventualne terete pre dogovora o ceni?',
+        'Kolike su prosečne mesečne režije i da li ima planiranih troškova zgrade?',
+        'Ako brzo zatvorimo uz čistu dokumentaciju, da li je cena fleksibilna za 5-10%?',
       ],
     },
     dinamička_pitanja: [
       {
-        pitanje: 'Da li je nekretnina uknjižena?',
-        odgovor: 'Proverite list nepokretnosti pre kupovine.',
+        pitanje: `Kakav je pravni status nekretnine na lokaciji ${location}?`,
+        odgovor:
+          'Tražite list nepokretnosti i proveru tereta pre avansa; bez toga ne zatvarajte cenu.',
       },
       {
-        pitanje: 'Kolike su mesečne režije?',
-        odgovor: 'Tražite potvrdu od vlasnika ili uprave zgrade.',
+        pitanje: 'Kolike su realne mesečne režije za ovaj tip objekta?',
+        odgovor:
+          'Tražite poslednja 3-6 računa; za slične stanove računajte tipičan raspon po lokaciji i tipu grejanja.',
       },
       {
-        pitanje: 'Da li je cena pregovaračka?',
-        odgovor: 'Većina oglasa ostavlja prostor za korekciju od 5-10%.',
+        pitanje: 'Koliko prostora ima za pregovor oko cene?',
+        odgovor:
+          pricePerM2 > 0
+            ? `Uz ${pricePerM2} EUR/m² i otvorena pitanja o stanju, realan cilj je korekcija od 5-10%.`
+            : 'Većina oglasa ostavlja prostor za korekciju od 5-10% uz brzo zatvaranje i čistu dokumentaciju.',
       },
     ],
   }
+}
+
+function ensureSellerContact(
+  analysis: SerbianPropertyAnalysis,
+  listing: PropertyScanRequest,
+): SerbianPropertyAnalysis {
+  const sellerType = classifySellerType(listing)
+  const ownerName = analysis.kontakt.ime_vlasnika?.trim() || listing.owner_name?.trim()
+  const agency = analysis.kontakt.agencija?.trim() || listing.agency_name?.trim() || null
+  const phone = analysis.kontakt.telefon?.trim() || listing.phone?.trim() || null
+
+  const resolvedOwner =
+    ownerName && !FORBIDDEN_UNKNOWN_PATTERN.test(ownerName)
+      ? ownerName
+      : sellerType
+
+  return {
+    ...analysis,
+    kontakt: {
+      telefon: phone,
+      ime_vlasnika: resolvedOwner,
+      agencija: agency && !FORBIDDEN_UNKNOWN_PATTERN.test(agency) ? agency : null,
+    },
+  }
+}
+
+function sanitizeAnalysisStrings(
+  analysis: SerbianPropertyAnalysis,
+  listing: PropertyScanRequest,
+): SerbianPropertyAnalysis {
+  const fallback = getFallbackPropertyAnalysis(listing)
+
+  return {
+    ...analysis,
+    sažetak: replaceForbiddenUnknown(analysis.sažetak, fallback.sažetak),
+    procena_vrednosti: {
+      ...analysis.procena_vrednosti,
+      obrazloženje: replaceForbiddenUnknown(
+        analysis.procena_vrednosti.obrazloženje,
+        fallback.procena_vrednosti.obrazloženje,
+      ),
+    },
+    troškovi: {
+      ...analysis.troškovi,
+      procena_režija: replaceForbiddenUnknown(
+        analysis.troškovi.procena_režija,
+        fallback.troškovi.procena_režija,
+      ),
+      procena_renoviranja: replaceForbiddenUnknown(
+        analysis.troškovi.procena_renoviranja,
+        fallback.troškovi.procena_renoviranja,
+      ),
+      napomene_o_održavanju: (() => {
+        const notes = analysis.troškovi.napomene_o_održavanju
+          .map((note) =>
+            replaceForbiddenUnknown(note, fallback.troškovi.napomene_o_održavanju[0]),
+          )
+          .filter(Boolean)
+          .slice(0, 6)
+
+        return notes.length > 0 ? notes : fallback.troškovi.napomene_o_održavanju
+      })(),
+    },
+    pravne_i_tehničke_provere: {
+      ...analysis.pravne_i_tehničke_provere,
+      uknjiženost: replaceForbiddenUnknown(
+        analysis.pravne_i_tehničke_provere.uknjiženost,
+        fallback.pravne_i_tehničke_provere.uknjiženost,
+      ),
+      grejanje: replaceForbiddenUnknown(
+        analysis.pravne_i_tehničke_provere.grejanje,
+        fallback.pravne_i_tehničke_provere.grejanje,
+      ),
+      starost_zgrade: replaceForbiddenUnknown(
+        analysis.pravne_i_tehničke_provere.starost_zgrade,
+        fallback.pravne_i_tehničke_provere.starost_zgrade,
+      ),
+      crvene_zastavice: analysis.pravne_i_tehničke_provere.crvene_zastavice
+        .map((flag) =>
+          replaceForbiddenUnknown(
+            flag,
+            fallback.pravne_i_tehničke_provere.crvene_zastavice[0],
+          ),
+        )
+        .filter(Boolean),
+      preporučene_provere: analysis.pravne_i_tehničke_provere.preporučene_provere
+        .map((item, index) =>
+          replaceForbiddenUnknown(
+            item,
+            fallback.pravne_i_tehničke_provere.preporučene_provere[
+              Math.min(
+                index,
+                fallback.pravne_i_tehničke_provere.preporučene_provere.length - 1,
+              )
+            ],
+          ),
+        )
+        .filter(Boolean),
+    },
+    strategija_pregovaranja: {
+      ...analysis.strategija_pregovaranja,
+      argumenti_za_spuštanje_cene:
+        analysis.strategija_pregovaranja.argumenti_za_spuštanje_cene
+          .map((item, index) =>
+            replaceForbiddenUnknown(
+              item,
+              fallback.strategija_pregovaranja.argumenti_za_spuštanje_cene[
+                Math.min(
+                  index,
+                  fallback.strategija_pregovaranja.argumenti_za_spuštanje_cene
+                    .length - 1,
+                )
+              ],
+            ),
+          )
+          .filter(Boolean),
+      skripte_za_pregovor:
+        analysis.strategija_pregovaranja.skripte_za_pregovor
+          .map((item, index) =>
+            replaceForbiddenUnknown(
+              item,
+              fallback.strategija_pregovaranja.skripte_za_pregovor[
+                Math.min(
+                  index,
+                  fallback.strategija_pregovaranja.skripte_za_pregovor.length - 1,
+                )
+              ],
+            ),
+          )
+          .filter(Boolean),
+    },
+    dinamička_pitanja: analysis.dinamička_pitanja.map((qa, index) => {
+      const fallbackQa =
+        fallback.dinamička_pitanja[
+          Math.min(index, fallback.dinamička_pitanja.length - 1)
+        ]
+
+      return {
+        pitanje: replaceForbiddenUnknown(qa.pitanje, fallbackQa.pitanje),
+        odgovor: replaceForbiddenUnknown(qa.odgovor, fallbackQa.odgovor),
+      }
+    }),
+  }
+}
+
+function ensureNegotiationAndFaq(
+  analysis: SerbianPropertyAnalysis,
+  listing: PropertyScanRequest,
+): SerbianPropertyAnalysis {
+  const fallback = getFallbackPropertyAnalysis(listing)
+
+  const argumentsList =
+    analysis.strategija_pregovaranja.argumenti_za_spuštanje_cene.length >= 2
+      ? analysis.strategija_pregovaranja.argumenti_za_spuštanje_cene.slice(0, 5)
+      : fallback.strategija_pregovaranja.argumenti_za_spuštanje_cene
+
+  const scripts =
+    analysis.strategija_pregovaranja.skripte_za_pregovor.length >= 3
+      ? analysis.strategija_pregovaranja.skripte_za_pregovor.slice(0, 4)
+      : fallback.strategija_pregovaranja.skripte_za_pregovor
+
+  const faqs =
+    analysis.dinamička_pitanja.length >= 3
+      ? analysis.dinamička_pitanja.slice(0, 5)
+      : fallback.dinamička_pitanja
+
+  return {
+    ...analysis,
+    strategija_pregovaranja: {
+      ...analysis.strategija_pregovaranja,
+      argumenti_za_spuštanje_cene: argumentsList,
+      skripte_za_pregovor: scripts,
+    },
+    dinamička_pitanja: faqs,
+  }
+}
+
+/** Ensures cena_po_m2 and seller fields before the client response. */
+export function enrichPropertyAnalysis(
+  analysis: SerbianPropertyAnalysis,
+  listing: PropertyScanRequest,
+): SerbianPropertyAnalysis {
+  const pricePerM2 = computePricePerM2(listing)
+  const withPrice: SerbianPropertyAnalysis = {
+    ...analysis,
+    procena_vrednosti: {
+      ...analysis.procena_vrednosti,
+      cena_po_m2:
+        analysis.procena_vrednosti.cena_po_m2 > 0
+          ? analysis.procena_vrednosti.cena_po_m2
+          : pricePerM2 > 0
+            ? pricePerM2
+            : analysis.procena_vrednosti.cena_po_m2,
+    },
+  }
+
+  // Prefer deterministic price/m² whenever listing numbers are valid.
+  if (pricePerM2 > 0) {
+    withPrice.procena_vrednosti.cena_po_m2 = pricePerM2
+  }
+
+  const withSeller = ensureSellerContact(withPrice, listing)
+  const sanitized = sanitizeAnalysisStrings(withSeller, listing)
+  const complete = ensureNegotiationAndFaq(sanitized, listing)
+  const fallback = getFallbackPropertyAnalysis(listing)
+
+  if (complete.pravne_i_tehničke_provere.preporučene_provere.length < 1) {
+    complete.pravne_i_tehničke_provere.preporučene_provere =
+      fallback.pravne_i_tehničke_provere.preporučene_provere
+  }
+
+  if (complete.troškovi.napomene_o_održavanju.length < 1) {
+    complete.troškovi.napomene_o_održavanju =
+      fallback.troškovi.napomene_o_održavanju
+  }
+
+  const parsed = SerbianPropertyAnalysisSchema.safeParse(complete)
+  if (parsed.success) return parsed.data
+
+  const fallbackParsed = SerbianPropertyAnalysisSchema.safeParse(fallback)
+  return fallbackParsed.success ? fallbackParsed.data : fallback
 }
 
 function stripMarkdownCodeFences(responseContent: string) {
@@ -487,7 +783,7 @@ async function fetchAnthropicMessage(
       messages: [
         {
           role: 'user',
-          content: JSON.stringify(listing),
+          content: buildPropertyAnalysisUserPrompt(listing),
         },
       ],
     }),
@@ -516,7 +812,11 @@ Respond ONLY with valid JSON. Do not write introductory text, markdown explanati
 Vrati isključivo jedan validan JSON objekat bez Markdown-a, code fence-a i dodatnog teksta.
 Svi JSON ključevi, vrednosti, oznake, sažeci, crvene zastavice, pregovarački argumenti i FAQ moraju biti na srpskom jeziku, Latinica.
 Ne koristi engleske ključeve kao summary, valuation, costs_breakdown, legal_and_technical_checks, negotiation_strategy ili dynamic_faq.
-Ako u podacima postoji telefon, ime vlasnika ili naziv agencije, obavezno ih prepiši u objekat "kontakt"; ako ne postoji, koristi null.
+ZABRANJENO: "Nije poznato", "Nije navedeno", "Nepoznato", "Podatak nije naveden", "N/A", prazni stringovi i cena_po_m2 = 0 kada postoje price i m2.
+Ako u podacima postoji telefon, ime vlasnika ili naziv agencije, obavezno ih prepiši u objekat "kontakt".
+Ako ime vlasnika nedostaje, u "ime_vlasnika" stavi klasifikaciju tipa prodavca: "Agencijska prodaja" ili "Direktna prodaja" (na osnovu opisa/provizije).
+Za strategija_pregovaranja.argumenti_za_spuštanje_cene daj 2-3 konkretne taktike vezane za ovu cenu/m² i opis.
+Za dinamička_pitanja daj 3-5 realističnih Q&A parova specifičnih za tip i lokaciju nekretnine.
 Piši kratko i konkretno, bez filler teksta. Uvek zatvori sve zagrade i nizove da JSON bude kompletan.
 
 JSON mora imati tačno sledeće srpske ključeve:
@@ -579,11 +879,12 @@ export async function analyzePropertyListing(
     }
 
     const responseContent = extractResponseText(result.body.content ?? [])
-    return parseClaudeJsonResponse(responseContent, listing)
+    const parsed = parseClaudeJsonResponse(responseContent, listing)
+    return enrichPropertyAnalysis(parsed, listing)
   } catch (err) {
     if (err instanceof SyntaxError) {
       console.error('CLAUDE_JSON_SYNTAX_FALLBACK:', err.message)
-      return getFallbackPropertyAnalysis(listing)
+      return enrichPropertyAnalysis(getFallbackPropertyAnalysis(listing), listing)
     }
 
     console.error('DIRECT_FETCH_ERROR:', err)

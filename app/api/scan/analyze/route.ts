@@ -5,6 +5,7 @@ import { ZodError } from 'zod/v4'
 import {
   analyzePropertyListing,
   ClaudeServiceError,
+  enrichPropertyAnalysis,
 } from '@/lib/ai/claudeService'
 import { PropertyScanRequestSchema } from '@/lib/ai/propertyAnalysisSchema'
 
@@ -191,7 +192,23 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const analysis = await analyzePropertyListing(parsedPayload.data)
+    const analysis = enrichPropertyAnalysis(
+      await analyzePropertyListing(parsedPayload.data),
+      parsedPayload.data,
+    )
+
+    // Mandatory programmatic override: never return 0/null cena_po_m2 when price & sqm exist.
+    if (
+      parsedPayload.data.price > 0 &&
+      parsedPayload.data.m2 > 0 &&
+      (!analysis.procena_vrednosti.cena_po_m2 ||
+        analysis.procena_vrednosti.cena_po_m2 === 0)
+    ) {
+      analysis.procena_vrednosti.cena_po_m2 = Math.round(
+        parsedPayload.data.price / parsedPayload.data.m2,
+      )
+    }
+
     return jsonResponse(analysis)
   } catch (error) {
     console.error('SCAN_ROUTE_ERROR:', error)
