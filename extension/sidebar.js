@@ -178,6 +178,51 @@ document.addEventListener("DOMContentLoaded", () => {
     return text;
   };
 
+  const isLocationNoisePart = (part) => {
+    const normalized = String(part ?? "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!normalized || /^[\W_]+$/u.test(normalized)) {
+      return true;
+    }
+
+    return (
+      /^(početna|pocetna|home)$/iu.test(normalized) ||
+      /nekretnine|pretraga|oglasi/iu.test(normalized) ||
+      /^(prodaja|izdavanje)(\s|$)/iu.test(normalized) ||
+      /^(prodaja|izdavanje)\s+(stanova|kuća|kuce|kuca|poslovnih|zemljišta|zemljista|garaža|garaza)\b/iu.test(
+        normalized,
+      ) ||
+      /^(stan|stanovi|kuća|kuće|kuca|kuce|plac|placevi|garaža|garaze|lokal|lokali|apartman|apartmani|house|houses|apartment|apartments|land|office)$/iu.test(
+        normalized,
+      ) ||
+      /^poslovni\s+prostor(i)?$/iu.test(normalized)
+    );
+  };
+
+  const sanitizeLocationDisplay = (raw) => {
+    const cleaned = String(raw ?? "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!cleaned) {
+      return "";
+    }
+
+    const parts = cleaned
+      .split(/\s*[>»›/|,]+\s*/)
+      .map((part) => part.replace(/^[\s.;:]+|[\s.;:]+$/g, "").trim())
+      .filter(Boolean)
+      .filter((part) => !isLocationNoisePart(part));
+
+    if (parts.length === 0) {
+      return cleaned;
+    }
+
+    return parts.join(", ");
+  };
+
   const safeDisplayHtml = (value) => {
     const cleaned = sanitizeDisplayText(value);
     return cleaned ? escapeHtml(cleaned) : "";
@@ -1343,8 +1388,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     return {
       location:
-        sanitizeDisplayText(listing.location, { maxLength: 80 }) ||
-        contextualMissingSpec("surface", listing),
+        sanitizeDisplayText(sanitizeLocationDisplay(listing.location), {
+          maxLength: 80,
+        }) || contextualMissingSpec("surface", listing),
       surfaceRooms,
       floor,
       sellerType,
@@ -1555,9 +1601,9 @@ document.addEventListener("DOMContentLoaded", () => {
           ${rows
             .map(
               (row) => `
-                <article class="highlight-snap-row highlight-snap-${row.tone}">
+                <article class="highlight-snap-row highlight-snap-${row.tone}" role="button" tabindex="0" aria-expanded="false">
                   <span class="highlight-snap-label">${escapeHtml(row.label)}</span>
-                  <p class="highlight-snap-value">${escapeHtml(sanitizeDisplayText(row.value, { maxLength: 180 }) || "Proveriti detalje oglasa pre odluke.")}</p>
+                  <p class="highlight-snap-value">${escapeHtml(sanitizeDisplayText(row.value) || "Proveriti detalje oglasa pre odluke.")}</p>
                 </article>
               `,
             )
@@ -2008,7 +2054,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     if (directTip) {
-      return sanitizeDisplayText(directTip, { maxLength: 180 }) || directTip;
+      return sanitizeDisplayText(directTip) || directTip;
     }
 
     const items = normalizeNegotiationItems(analysis);
@@ -2017,7 +2063,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const top = items[0];
-    const answer = sanitizeDisplayText(top.answer, { maxLength: 180 });
+    const answer = sanitizeDisplayText(top.answer);
     if (!answer) {
       return (
         sanitizeDisplayText(top.question, { maxLength: 140 }) ||
@@ -2026,6 +2072,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     return answer;
+  };
+
+  const toggleHighlightSnapRow = (row) => {
+    if (!row) {
+      return;
+    }
+
+    const expanded = row.classList.toggle("is-expanded");
+    row.setAttribute("aria-expanded", expanded ? "true" : "false");
   };
 
   const renderFaq = (analysis, listingId) => {
@@ -2980,6 +3035,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const unlockButton = event.target.closest(".unlock-button");
     const saveButton = event.target.closest(".save-dashboard-button");
     const faqHeader = event.target.closest(".faq-header");
+    const highlightRow = event.target.closest(".highlight-snap-row");
 
     if (unlockButton) {
       unlockListing(unlockButton.dataset.listingId);
@@ -3001,6 +3057,11 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    if (highlightRow) {
+      toggleHighlightSnapRow(highlightRow);
+      return;
+    }
+
     if (trigger) {
       toggleListing(trigger.dataset.listingId);
       return;
@@ -3008,6 +3069,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (saveButton) {
       saveListingToDashboard(saveButton.dataset.listingId);
+    }
+  });
+
+  accordion.addEventListener("keydown", (event) => {
+    const highlightRow = event.target.closest(".highlight-snap-row");
+    if (!highlightRow) {
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleHighlightSnapRow(highlightRow);
     }
   });
 
