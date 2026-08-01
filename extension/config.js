@@ -1,11 +1,8 @@
 // config.js
 (() => {
-  const LOCAL_WEBSITE_ORIGIN = "http://localhost:3000";
-  const PRODUCTION_WEBSITE_ORIGIN = "https://real-estate-lac-ten.vercel.app";
-
-  // Side panel runs on chrome-extension://, so always point login/dashboard at production
-  // unless the extension is being developed against a local Next.js app.
-  const WEBSITE_ORIGIN = PRODUCTION_WEBSITE_ORIGIN;
+  // Postavljamo origin na tvoj lokalni server ili pravi domen ako postoji
+// ZAMJENI LINIJE 4-6 SA OVIM:
+  const WEBSITE_ORIGIN = "https://real-estate-lac-ten.vercel.app";
 
   const SUPABASE_URL = "https://uvexonxityogdjfuqmus.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_eXLcaDBO5nRiQkuJ0j5dJA_2K7Vf4ly";
@@ -14,8 +11,6 @@
   const EXTENSION_SESSION_STORAGE_KEY = "brei:supabase-session";
   const WEBSITE_LOGIN_URL = `${WEBSITE_ORIGIN}?openAuth=true`;
   const WEBSITE_DASHBOARD_URL = `${WEBSITE_ORIGIN}/dashboard`;
-  const WEBSITE_SESSION_API_URL = `${WEBSITE_ORIGIN}/api/auth/session`;
-  const ALLOWED_WEBSITE_ORIGINS = [LOCAL_WEBSITE_ORIGIN, PRODUCTION_WEBSITE_ORIGIN];
 
   const chromeStorageAuthAdapter = {
     async getItem(key) {
@@ -41,13 +36,11 @@
   };
 
   window.breiConfig = {
-    ALLOWED_WEBSITE_ORIGINS,
     EXTENSION_SESSION_STORAGE_KEY,
     SUPABASE_WEBSITE_STORAGE_KEY,
     WEBSITE_DASHBOARD_URL,
     WEBSITE_LOGIN_URL,
     WEBSITE_ORIGIN,
-    WEBSITE_SESSION_API_URL,
   };
 
   // Sigurno kreiranje Supabase klijenta bez pucanja varijabli

@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="sidebar.css">
     <script src="vendor/supabase.js" defer></script>
     <script src="config.js" defer></script>
-    <script src="services/mockAiService.js" defer></script>
     <script src="sidebar.js" defer></script>
   </head>
   <body>
@@ -34,24 +33,24 @@
             ></button>
           </div>
 
-          <section id="profile-card" class="profile-card is-loading" aria-label="Korisnički profil">
+          <section id="profile-card" class="profile-card is-unauthenticated" aria-label="Korisnički profil">
             <div class="profile-top">
               <div class="avatar-wrap" aria-hidden="true">
-                <span id="profile-avatar" class="avatar">...</span>
+                <span id="profile-avatar" class="avatar">BR</span>
                 <span id="profile-status-dot" class="online-dot"></span>
               </div>
               <div class="profile-copy">
-                <p id="profile-label" class="profile-label">Učitavanje profila...</p>
-                <p id="profile-subtitle" class="profile-subtitle">Proveravamo Supabase sesiju</p>
+                <p id="profile-label" class="profile-label">Niste prijavljeni</p>
+                <p id="profile-subtitle" class="profile-subtitle">Prijavite se na sajtu da povežete nalog.</p>
                 <p id="profile-email" class="profile-email"></p>
               </div>
               <a id="profile-action" href="#" class="upgrade-link" target="_blank" rel="noopener" aria-label="Otvori nalog na sajtu">Prijava</a>
             </div>
             <div class="credits-row">
-              <span id="credits-label">Credits: 0 / 20</span>
+              <span id="credits-label">Credits: 0 / 5</span>
               <span id="credits-percent">0%</span>
             </div>
-            <div id="credits-progress" class="progress-track" aria-label="Krediti: 0 od 20">
+            <div id="credits-progress" class="progress-track" aria-label="Krediti: 0 od 5">
               <div id="credits-fill" class="progress-fill credits-fill"></div>
             </div>
           </section>
@@ -67,18 +66,45 @@
               </svg>
             </span>
             <span class="scan-label">Skeniraj Stranicu</span>
-            <span class="scan-helper">Pokreni lokalnu AI detekciju oglasa na aktivnoj stranici</span>
+            <span class="scan-helper">Detektuj pojedinačni oglas na aktivnoj stranici</span>
           </button>
+          <p id="scan-notice" class="scan-notice is-hidden" role="status" aria-live="polite" aria-hidden="true"></p>
+        </section>
+
+        <section
+          id="no-listing-state"
+          class="state-panel no-listing-state is-hidden"
+          aria-label="Nije detektovan oglas"
+          aria-hidden="true"
+        >
+          <article class="no-listing-card" role="alert">
+            <p class="section-kicker">DETEKCIJA</p>
+            <h2>Nije detektovan oglas za analizu</h2>
+            <p>
+              Molimo vas da otvorite stranicu sa pojedinačnim oglasom na podržanim portalima (npr. Halo Oglasi) i
+              osvežite stranicu.
+            </p>
+            <button id="retry-scan-button" class="retry-scan-button" type="button">
+              Pokušaj ponovo
+            </button>
+          </article>
         </section>
 
         <section id="results-state" class="state-panel listings-state is-hidden" aria-label="Pronađeni oglasi" aria-hidden="true">
           <div class="listings-summary" aria-live="polite">
             <div>
               <p class="section-kicker">DETEKTOVANI OGLASI</p>
-              <h2>Pronađeno 3 oglasa na stranici</h2>
+              <h2 id="listings-summary-title">Pronađen pojedinačni oglas na stranici</h2>
             </div>
-            <span class="summary-badge">3 aktivna</span>
+            <span id="summary-badge" class="summary-badge">1 aktivan</span>
           </div>
+          <p
+            id="partial-data-warning"
+            class="partial-data-warning is-hidden"
+            role="status"
+            aria-live="polite"
+            aria-hidden="true"
+          ></p>
 
           <div id="listings-accordion" class="listings-accordion" aria-label="Accordion lista pronađenih oglasa"></div>
         </section>

@@ -30,18 +30,71 @@ export interface AIListingAnalysis {
 
 export interface ScannedListingItem {
   id: string;
-  portal_name: string; // e.g. "HaloOglasi", "Nekretnine.rs", "4zida"
+  portal_name: string; // hostname from the active page, not a hardcoded portal map
   listing_url: string;
-  title: string;
-  location: {
-    city: string;
-    municipality: string; // e.g. "Vračar", "Novi Beograd"
-    micro_location?: string; // e.g. "Cvetni Trg", "Blok 45"
-  };
-  total_price: number;
-  area_sqm: number;
+  title: string | null;
+  description: string | null;
+  location: string | null;
+  total_price: number | null;
+  currency: 'EUR' | 'USD' | 'GBP' | 'RSD' | null;
+  area_sqm: number | null;
+  raw_price?: string | null;
+  raw_area?: string | null;
+  is_valid_listing: boolean;
+  has_partial_data: boolean;
+  completeness_score: 0 | 20 | 40 | 60 | 80 | 100;
   is_unlocked: boolean;
   analysis?: AIListingAnalysis;
+}
+
+export type ListingDetectionField =
+  | 'price'
+  | 'title'
+  | 'description'
+  | 'location'
+  | 'surface_area';
+
+export interface ListingDetectionResult {
+  schema_version: 1;
+  is_valid_listing: boolean;
+  has_partial_data: boolean;
+  completeness_score: 0 | 20 | 40 | 60 | 80 | 100;
+  missing_fields: ListingDetectionField[];
+  detection: {
+    method: 'json_ld' | 'dom_heuristic' | 'hybrid' | 'none';
+    confidence_score: number;
+    json_ld_types: string[];
+    signals: {
+      has_property_schema: boolean;
+      has_offer: boolean;
+      has_price: boolean;
+      has_title: boolean;
+      has_description: boolean;
+      has_location: boolean;
+      has_surface_area: boolean;
+      has_specs_container: boolean;
+      is_collection_like: boolean;
+      repeated_listing_count: number;
+    };
+  };
+  listing: null | {
+    portal_name: string;
+    listing_url: string;
+    title: string | null;
+    description: string | null;
+    location: string | null;
+    price: {
+      value: number | null;
+      currency: 'EUR' | 'USD' | 'GBP' | 'RSD' | null;
+      raw: string | null;
+    };
+    surface_area: {
+      value: number | null;
+      unit: 'sqm' | 'sqft' | null;
+      sqm: number | null;
+      raw: string | null;
+    };
+  };
 }
 
 export const AI_LISTING_ANALYSIS_JSON_SCHEMA = {
