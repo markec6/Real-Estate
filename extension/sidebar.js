@@ -1604,6 +1604,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <article class="highlight-snap-row highlight-snap-${row.tone}" role="button" tabindex="0" aria-expanded="false">
                   <span class="highlight-snap-label">${escapeHtml(row.label)}</span>
                   <p class="highlight-snap-value">${escapeHtml(sanitizeDisplayText(row.value) || "Proveriti detalje oglasa pre odluke.")}</p>
+                  <span class="highlight-chevron" aria-hidden="true">▾</span>
                 </article>
               `,
             )

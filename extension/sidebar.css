@@ -867,6 +867,7 @@ button {
 }
 
 .highlight-snap-row {
+  position: relative;
   display: grid;
   gap: 4px;
   border: 1px solid #27272a;
@@ -918,6 +919,22 @@ button {
   display: block !important;
   overflow: visible !important;
   max-height: 40em !important;
+}
+
+.highlight-chevron {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  pointer-events: none;
+  font-size: 11px;
+  opacity: 0.6;
+  color: inherit;
+  transition: transform 0.28s ease, opacity 0.2s ease;
+}
+
+.highlight-snap-row.is-expanded .highlight-chevron {
+  transform: rotate(180deg);
+  opacity: 1;
 }
 
 .action-module {
