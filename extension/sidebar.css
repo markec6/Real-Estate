@@ -914,10 +914,10 @@ button {
 }
 
 .highlight-snap-row.is-expanded .highlight-snap-value {
-  -webkit-line-clamp: unset;
-  display: block;
-  overflow: visible;
-  max-height: 40em;
+  -webkit-line-clamp: unset !important;
+  display: block !important;
+  overflow: visible !important;
+  max-height: 40em !important;
 }
 
 .action-module {
