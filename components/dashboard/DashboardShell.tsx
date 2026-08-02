@@ -3,13 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import EmptySavedState from '@/components/dashboard/EmptySavedState'
 import ListingCardSkeleton from '@/components/dashboard/ListingCardSkeleton'
+import ListingDetailView from '@/components/dashboard/ListingDetailView'
 import PropertySidebar from '@/components/dashboard/PropertySidebar'
 import PropertySwitcherSheet from '@/components/dashboard/PropertySwitcherSheet'
 import PropertyTopBar from '@/components/dashboard/PropertyTopBar'
-import {
-  formatEuro,
-  formatEuroPerSqm,
-} from '@/lib/dashboard/parseListingDisplay'
 import type { ListingDisplay } from '@/lib/dashboard/types'
 
 const SELECTED_STORAGE_KEY = 'brei-dashboard-selected-id'
@@ -19,14 +16,6 @@ type DashboardShellProps = {
   loading?: boolean
   error?: string | null
   onRetry?: () => void
-}
-
-function ThumbIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M3 21h18M3 18h18M6 18V9M10 18V9M14 18V9M18 18V9M4 9h16M12 3l8 6H4l8-6z" />
-    </svg>
-  )
 }
 
 function readStoredSelectedId(): number | null {
@@ -110,11 +99,6 @@ export default function DashboardShell({
     )
   }
 
-  const locationLabel = selected
-    ? [selected.city, selected.neighborhood].filter(Boolean).join(' · ') ||
-      'Lokacija nije dostupna'
-    : ''
-
   return (
     <div className="dashboard-shell">
       <PropertyTopBar
@@ -137,53 +121,7 @@ export default function DashboardShell({
           </div>
         ) : selected ? (
           <div className="selected-listing-panel">
-            <section className="selected-listing-hero dashboard-glass">
-              <div className="selected-listing-hero-grid">
-                <div className="listing-card-thumb" aria-hidden="true">
-                  <ThumbIcon />
-                </div>
-                <div>
-                  <div className="listing-card-title-row">
-                    <h1 className="dashboard-section-title" style={{ margin: 0 }}>
-                      {selected.title}
-                    </h1>
-                    <span
-                      className={
-                        selected.isOwner
-                          ? 'listing-badge listing-badge-owner'
-                          : 'listing-badge listing-badge-agency'
-                      }
-                    >
-                      {selected.advertiserLabel}
-                    </span>
-                  </div>
-                  <p className="selected-listing-location">{locationLabel}</p>
-                  <div className="selected-listing-pricing">
-                    <div className="selected-listing-price-block">
-                      <span className="selected-listing-price-label">Cena</span>
-                      <span className="selected-listing-price-value">
-                        {formatEuro(selected.priceEur)}
-                      </span>
-                    </div>
-                    <div className="selected-listing-price-block">
-                      <span className="selected-listing-price-label">Cena / m²</span>
-                      <span className="selected-listing-price-value">
-                        {formatEuroPerSqm(selected.pricePerSqm)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className="analysis-placeholder dashboard-glass">
-              <span className="analysis-placeholder-badge">AI analiza</span>
-              <h2 className="dashboard-section-title">Detalji analize — uskoro</h2>
-              <p className="dashboard-section-subtitle">
-                Ovde će se prikazati sažetak, rizici, pregovaračka strategija i kontakt
-                podaci iz sačuvane AI analize.
-              </p>
-            </section>
+            <ListingDetailView listing={selected} />
           </div>
         ) : null}
       </main>

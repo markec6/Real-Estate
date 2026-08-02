@@ -77,20 +77,24 @@ function parseLocation(locationName: string | null): {
 
 export function extractContactDetails(
   aiAnalysis: Record<string, unknown> | null,
+  listingPhone?: string | null,
 ): ContactDetails | null {
-  if (!aiAnalysis) return null
-
-  const nested = isRecord(aiAnalysis.contact_details)
-    ? aiAnalysis.contact_details
-    : null
-  const contact = isRecord(aiAnalysis.contact) ? aiAnalysis.contact : null
+  const nested =
+    aiAnalysis && isRecord(aiAnalysis.contact_details)
+      ? aiAnalysis.contact_details
+      : null
+  const contact =
+    aiAnalysis && isRecord(aiAnalysis.contact) ? aiAnalysis.contact : null
+  const kontakt =
+    aiAnalysis && isRecord(aiAnalysis.kontakt) ? aiAnalysis.kontakt : null
 
   const agency_name = asString(
     firstAvailable(
       nested?.agency_name,
       contact?.agency_name,
       contact?.agency,
-      aiAnalysis.agency_name,
+      kontakt?.agencija,
+      aiAnalysis?.agency_name,
     ),
   )
   const phone_number = asString(
@@ -98,8 +102,10 @@ export function extractContactDetails(
       nested?.phone_number,
       contact?.phone_number,
       contact?.phone,
-      aiAnalysis.phone_number,
-      aiAnalysis.phone,
+      kontakt?.telefon,
+      aiAnalysis?.phone_number,
+      aiAnalysis?.phone,
+      listingPhone,
     ),
   )
   const contact_email = asString(
@@ -107,19 +113,19 @@ export function extractContactDetails(
       nested?.contact_email,
       contact?.contact_email,
       contact?.email,
-      aiAnalysis.contact_email,
+      aiAnalysis?.contact_email,
     ),
   )
   const advertiser_type = asString(
     firstAvailable(
       nested?.advertiser_type,
       contact?.advertiser_type,
-      aiAnalysis.advertiser_type,
+      aiAnalysis?.advertiser_type,
     ),
   )
 
   const isOwnerFlag = asBoolean(
-    firstAvailable(nested?.is_owner, contact?.is_owner, aiAnalysis.is_owner),
+    firstAvailable(nested?.is_owner, contact?.is_owner, aiAnalysis?.is_owner),
   )
 
   if (
@@ -192,7 +198,10 @@ export function parseListingDisplay(row: SavedListingRow): ListingDisplay | null
   if (!listing) return null
 
   const aiAnalysis = isRecord(listing.ai_analysis) ? listing.ai_analysis : null
-  const contactDetails = extractContactDetails(aiAnalysis)
+  const contactDetails = extractContactDetails(
+    aiAnalysis,
+    listing.phone_number,
+  )
   const { city, neighborhood } = parseLocation(listing.location_name)
   const isOwner = resolveIsOwner(listing.is_owner, contactDetails, aiAnalysis)
 
