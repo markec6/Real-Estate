@@ -178,6 +178,22 @@ document.addEventListener("DOMContentLoaded", () => {
     return text;
   };
 
+  /** Sanitize for persistence — never truncate analysis / contact payload strings. */
+  const sanitizeFullText = (value) => {
+    const text = String(value ?? "")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<!--[\s\S]*?-->/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!text || looksLikeRawCode(text)) {
+      return "";
+    }
+
+    return text;
+  };
+
   const isLocationNoisePart = (part) => {
     const normalized = String(part ?? "")
       .replace(/\s+/g, " ")
@@ -1145,6 +1161,29 @@ document.addEventListener("DOMContentLoaded", () => {
     return looksLikeRawCode(asText) ? [] : [asText];
   };
 
+  /** Full-text collector for dashboard/Supabase payloads — no maxLength clipping. */
+  const collectFullTextItems = (value) => {
+    if (value === null || value === undefined || value === "") {
+      return [];
+    }
+
+    if (Array.isArray(value)) {
+      return value.flatMap(collectFullTextItems);
+    }
+
+    if (isAnalysisObject(value)) {
+      return Object.values(value).flatMap(collectFullTextItems);
+    }
+
+    if (typeof value === "string") {
+      const cleaned = sanitizeFullText(value);
+      return cleaned ? [cleaned] : [];
+    }
+
+    const asText = String(value);
+    return looksLikeRawCode(asText) ? [] : [asText];
+  };
+
   const renderMetricDisplay = (value, key) => {
     if (value === null || value === undefined || value === "") {
       return "—";
@@ -1620,12 +1659,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const renderContactCard = (listing, analysis) => {
     const detectedListing = listing?.detection?.listing ?? {};
     const financials = isAnalysisObject(analysis.financials) ? analysis.financials : {};
+    const contactDetails = isAnalysisObject(analysis.contact_details)
+      ? analysis.contact_details
+      : isAnalysisObject(listing?.rawAnalysis?.contact_details)
+        ? listing.rawAnalysis.contact_details
+        : buildContactDetails(listing);
     const contact = isAnalysisObject(analysis.contact)
       ? analysis.contact
       : isAnalysisObject(analysis.seller_contact)
         ? analysis.seller_contact
         : {};
     const phone = firstAvailable(
+      contactDetails.phone_number,
       contact.phone,
       contact.phone_number,
       analysis.phone,
@@ -1634,6 +1679,7 @@ document.addEventListener("DOMContentLoaded", () => {
       detectedListing.phone_number,
     );
     const agency = firstAvailable(
+      contactDetails.agency_name,
       contact.agency,
       contact.agency_name,
       analysis.agency,
@@ -1648,8 +1694,20 @@ document.addEventListener("DOMContentLoaded", () => {
       analysis.owner_name,
       detectedListing.owner_name,
     );
+    const email = firstAvailable(
+      contactDetails.contact_email,
+      contact.contact_email,
+      contact.email,
+      detectedListing.contact_email,
+      detectedListing.email,
+    );
 
     const sellerFallback = mapSellerTypeForUi(analysis, detectedListing);
+    const phoneDisplay =
+      phone ||
+      (detectedListing.phone || detectedListing.phone_number
+        ? detectedListing.phone || detectedListing.phone_number
+        : "Tražiti broj od oglašivača na portalu");
 
     return renderSectionCard(
       "Informacije o nekretnini",
@@ -1657,11 +1715,10 @@ document.addEventListener("DOMContentLoaded", () => {
         [
           renderKvRow("Ime / agencija", escapeHtml(agency || sellerFallback)),
           renderKvRow("Vlasnik", escapeHtml(ownerName || sellerFallback)),
-          renderKvRow(
-            "Telefon",
-            escapeHtml(phone || "Tražiti broj od oglašivača na portalu"),
-            { accent: true },
-          ),
+          renderKvRow("Telefon", escapeHtml(phoneDisplay), { accent: true }),
+          email
+            ? renderKvRow("Email", escapeHtml(email))
+            : "",
           renderKvRow(
             "Lokacija",
             escapeHtml(listing.location || contextualMissingSpec("surface", listing)),
@@ -1670,7 +1727,9 @@ document.addEventListener("DOMContentLoaded", () => {
             "Naslov",
             escapeHtml(listing.title || "Naslov oglasa — proveriti na portalu"),
           ),
-        ].join(""),
+        ]
+          .filter(Boolean)
+          .join(""),
       ),
       "contact-module",
     );
@@ -2427,10 +2486,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const scrapedOwner = sanitizeDisplayText(detectedListing?.owner_name || "", {
       maxLength: 160,
     });
-    const scrapedPhone = sanitizeDisplayText(
+    const scrapedPhone = sanitizeFullText(
       detectedListing?.phone || detectedListing?.phone_number || "",
-      { maxLength: 80 },
     );
+    const scrapedEmail = sanitizeFullText(
+      detectedListing?.contact_email || detectedListing?.email || "",
+    );
+    const scrapedIsOwner =
+      typeof detectedListing?.is_owner === "boolean"
+        ? detectedListing.is_owner
+        : /vlasnik|direktn|fizi[cč]ko|privatn/i.test(scrapedAdvertiserType) &&
+          !/agencij|investitor|posrednik/i.test(scrapedAdvertiserType);
 
     // Payload is always the live scraped listing — never a generic fallback object.
     return {
@@ -2466,6 +2532,10 @@ document.addEventListener("DOMContentLoaded", () => {
       advertiser_type: scrapedAdvertiserType,
       owner_name: scrapedOwner,
       phone: scrapedPhone,
+      phone_number: scrapedPhone,
+      contact_email: scrapedEmail,
+      email: scrapedEmail,
+      is_owner: scrapedIsOwner,
     };
   };
 
@@ -2821,7 +2891,7 @@ document.addEventListener("DOMContentLoaded", () => {
       throw new Error(ANALYZE_API_ERROR_MESSAGE);
     }
 
-    return adaptAnalysisForUi(analysis);
+    return analysis;
   };
 
   const unlockListing = async (id) => {
@@ -2884,7 +2954,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const accessToken = await getAnalysisAccessToken();
       const analysisPayload = await buildAnalysisRequestListing(listing);
-      const analysis = await fetchRealAnalysis(analysisPayload, accessToken);
+      const rawAnalysis = await fetchRealAnalysis(analysisPayload, accessToken);
 
       if (
         isNoListingsFoundResult(currentDetectionResult) ||
@@ -2901,11 +2971,14 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      listing.analysis = analysis;
+      listing.rawAnalysis = rawAnalysis;
+      listing.analysis = adaptAnalysisForUi(rawAnalysis);
+      listing.analysis.contact_details = buildContactDetails(listing);
       listing.unlocked = true;
       openListingId = id;
     } catch (error) {
       console.error("Failed to unlock listing analysis.", error);
+      listing.rawAnalysis = undefined;
       listing.analysis = undefined;
       listing.unlocked = false;
       listing.analysisError = ANALYZE_API_ERROR_MESSAGE;
@@ -2965,18 +3038,302 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  const buildDashboardSavePayload = (listing) => ({
-    id: listing.id,
-    title: listing.title,
-    location: listing.location,
-    price: listing.price,
-    unlocked: listing.unlocked,
-    hasPartialData: listing.hasPartialData,
-    isDetectionValid: listing.isDetectionValid,
-    detection: listing.detection ?? null,
-    analysis: listing.analysis ?? null,
-    saved_at: new Date().toISOString(),
-  });
+  const buildContactDetails = (listing) => {
+    const detectedListing = listing?.detection?.listing ?? {};
+    const rawAnalysis =
+      (isAnalysisObject(listing?.rawAnalysis) && listing.rawAnalysis) ||
+      (isAnalysisObject(listing?.analysis) && listing.analysis) ||
+      {};
+    const kontaktSr = isAnalysisObject(rawAnalysis.kontakt) ? rawAnalysis.kontakt : {};
+    const contact = isAnalysisObject(rawAnalysis.contact) ? rawAnalysis.contact : {};
+    const contactDetailsExisting = isAnalysisObject(rawAnalysis.contact_details)
+      ? rawAnalysis.contact_details
+      : {};
+
+    const agency_name =
+      sanitizeFullText(
+        firstAvailable(
+          detectedListing.agency_name,
+          contactDetailsExisting.agency_name,
+          kontaktSr.agencija,
+          contact.agency_name,
+          contact.agency,
+          rawAnalysis.agency_name,
+        ),
+      ) || "";
+
+    const phone_number =
+      sanitizeFullText(
+        firstAvailable(
+          detectedListing.phone_number,
+          detectedListing.phone,
+          contactDetailsExisting.phone_number,
+          kontaktSr.telefon,
+          contact.phone_number,
+          contact.phone,
+          rawAnalysis.phone_number,
+          rawAnalysis.phone,
+        ),
+      ) || "";
+
+    const contact_email =
+      sanitizeFullText(
+        firstAvailable(
+          detectedListing.contact_email,
+          detectedListing.email,
+          contactDetailsExisting.contact_email,
+          contact.contact_email,
+          contact.email,
+          rawAnalysis.contact_email,
+          rawAnalysis.email,
+        ),
+      ) || "";
+
+    const advertiser_type =
+      sanitizeFullText(
+        firstAvailable(
+          detectedListing.advertiser_type,
+          contactDetailsExisting.advertiser_type,
+          rawAnalysis.advertiser_type,
+          contact.advertiser_type,
+        ),
+      ) || "";
+
+    const explicitIsOwner = firstAvailable(
+      detectedListing.is_owner,
+      contactDetailsExisting.is_owner,
+      rawAnalysis.is_owner,
+      contact.is_owner,
+    );
+
+    const is_owner =
+      typeof explicitIsOwner === "boolean"
+        ? explicitIsOwner
+        : /vlasnik|direktn|fizi[cč]ko|privatn/i.test(
+            `${advertiser_type} ${detectedListing.owner_name || ""}`,
+          ) && !/agencij|investitor|posrednik|broker/i.test(advertiser_type);
+
+    return {
+      agency_name,
+      phone_number,
+      contact_email,
+      is_owner: Boolean(is_owner),
+      advertiser_type,
+    };
+  };
+
+  const buildFullFaqItems = (rawAnalysis) => {
+    if (Array.isArray(rawAnalysis?.dynamic_faq) && rawAnalysis.dynamic_faq.length > 0) {
+      return rawAnalysis.dynamic_faq
+        .map((item) => {
+          if (!isAnalysisObject(item) && typeof item !== "object") {
+            return null;
+          }
+
+          const question = sanitizeFullText(
+            firstAvailable(item.question, item.pitanje, item.label, item.title),
+          );
+          const answer = sanitizeFullText(
+            firstAvailable(item.answer, item.odgovor, item.response, item.content),
+          );
+
+          if (!question && !answer) {
+            return null;
+          }
+
+          return { question, answer };
+        })
+        .filter(Boolean);
+    }
+
+    const faqsSr = Array.isArray(rawAnalysis?.dinamička_pitanja)
+      ? rawAnalysis.dinamička_pitanja
+      : [];
+
+    return faqsSr
+      .map((item) => {
+        const question = sanitizeFullText(
+          firstAvailable(item?.pitanje, item?.question, item?.label),
+        );
+        const answer = sanitizeFullText(
+          firstAvailable(item?.odgovor, item?.answer, item?.response),
+        );
+        if (!question && !answer) {
+          return null;
+        }
+        return { question, answer };
+      })
+      .filter(Boolean);
+  };
+
+  const buildAiAnalysisForSave = (listing) => {
+    const rawAnalysis =
+      (isAnalysisObject(listing?.rawAnalysis) && listing.rawAnalysis) ||
+      (isAnalysisObject(listing?.analysis) && listing.analysis) ||
+      {};
+
+    const valuationSr = isAnalysisObject(rawAnalysis.procena_vrednosti)
+      ? rawAnalysis.procena_vrednosti
+      : {};
+    const costsSr = isAnalysisObject(rawAnalysis.troškovi) ? rawAnalysis.troškovi : {};
+    const legalSr = isAnalysisObject(rawAnalysis.pravne_i_tehničke_provere)
+      ? rawAnalysis.pravne_i_tehničke_provere
+      : {};
+    const negoSr = isAnalysisObject(rawAnalysis.strategija_pregovaranja)
+      ? rawAnalysis.strategija_pregovaranja
+      : {};
+    const existingInsights = isAnalysisObject(rawAnalysis.insights)
+      ? rawAnalysis.insights
+      : {};
+    const existingCosts = isAnalysisObject(rawAnalysis.cost_breakdown)
+      ? rawAnalysis.cost_breakdown
+      : isAnalysisObject(rawAnalysis.costs)
+        ? rawAnalysis.costs
+        : {};
+    const existingNego = isAnalysisObject(rawAnalysis.negotiation_strategy)
+      ? rawAnalysis.negotiation_strategy
+      : {};
+
+    const redFlags = collectFullTextItems(
+      firstAvailable(
+        existingInsights.risks,
+        rawAnalysis.red_flags,
+        legalSr.crvene_zastavice,
+      ),
+    );
+    const recommendedChecks = collectFullTextItems(
+      firstAvailable(rawAnalysis.recommended_checks, legalSr.preporučene_provere),
+    );
+    const highlights = collectFullTextItems(
+      firstAvailable(
+        existingInsights.highlights,
+        rawAnalysis.highlights,
+        valuationSr.prednosti,
+      ),
+    );
+    const leveragePoints = collectFullTextItems(
+      firstAvailable(
+        existingNego.leverage_points,
+        rawAnalysis.leverage_points,
+        negoSr.argumenti_za_spuštanje_cene,
+      ),
+    );
+    const scriptLines = collectFullTextItems(
+      firstAvailable(
+        existingNego.script_lines,
+        rawAnalysis.script_lines,
+        negoSr.skripte_za_pregovor,
+      ),
+    );
+    const upkeepNotes = collectFullTextItems(
+      firstAvailable(existingCosts.upkeep_notes, costsSr.napomene_o_održavanju),
+    );
+    const renovationAssessment = sanitizeFullText(
+      firstAvailable(
+        existingCosts.renovation_assessment,
+        costsSr.procena_renoviranja,
+        rawAnalysis.renovation_assessment,
+      ),
+    );
+    const renovationBreakdown = collectFullTextItems(
+      firstAvailable(
+        existingCosts.renovation_breakdown,
+        existingCosts.itemized_renovation,
+        costsSr.stavke_renoviranja,
+        costsSr.razbijanje_renoviranja,
+        rawAnalysis.renovation_breakdown,
+      ),
+    );
+
+    const contact_details = buildContactDetails(listing);
+
+    return {
+      ...rawAnalysis,
+      summary: sanitizeFullText(
+        firstAvailable(rawAnalysis.summary, rawAnalysis.sažetak),
+      ),
+      sažetak: sanitizeFullText(
+        firstAvailable(rawAnalysis.sažetak, rawAnalysis.summary),
+      ),
+      red_flags: redFlags,
+      recommended_checks: recommendedChecks,
+      insights: {
+        ...existingInsights,
+        risks: redFlags,
+        highlights,
+      },
+      cost_breakdown: {
+        ...existingCosts,
+        ...costsSr,
+        utilities_assessment: sanitizeFullText(
+          firstAvailable(existingCosts.utilities_assessment, costsSr.procena_režija),
+        ),
+        renovation_assessment: renovationAssessment,
+        estimated_renovation_cost_eur: firstAvailable(
+          existingCosts.estimated_renovation_cost_eur,
+          existingCosts.renovation_cost,
+          costsSr.trošak_renoviranja_eur,
+        ),
+        renovation_cost: firstAvailable(
+          existingCosts.renovation_cost,
+          existingCosts.estimated_renovation_cost_eur,
+          costsSr.trošak_renoviranja_eur,
+        ),
+        upkeep_notes: upkeepNotes,
+        renovation_breakdown: renovationBreakdown,
+        itemized_renovation: renovationBreakdown,
+      },
+      negotiation_strategy: {
+        ...existingNego,
+        target_discount_pct: firstAvailable(
+          existingNego.target_discount_pct,
+          rawAnalysis.target_discount_pct,
+          negoSr.ciljani_popust_procenat,
+        ),
+        leverage_points: leveragePoints,
+        script_lines: scriptLines,
+      },
+      leverage_points: leveragePoints,
+      dynamic_faq: buildFullFaqItems(rawAnalysis),
+      contact: {
+        ...(isAnalysisObject(rawAnalysis.contact) ? rawAnalysis.contact : {}),
+        phone: contact_details.phone_number,
+        phone_number: contact_details.phone_number,
+        agency: contact_details.agency_name,
+        agency_name: contact_details.agency_name,
+        contact_email: contact_details.contact_email,
+        email: contact_details.contact_email,
+        is_owner: contact_details.is_owner,
+        advertiser_type: contact_details.advertiser_type,
+      },
+      agency_name: contact_details.agency_name,
+      phone: contact_details.phone_number,
+      phone_number: contact_details.phone_number,
+      contact_email: contact_details.contact_email,
+      is_owner: contact_details.is_owner,
+      advertiser_type: contact_details.advertiser_type,
+      contact_details,
+    };
+  };
+
+  const buildDashboardSavePayload = (listing) => {
+    const ai_analysis = buildAiAnalysisForSave(listing);
+
+    return {
+      id: listing.id,
+      title: listing.title,
+      location: listing.location,
+      price: listing.price,
+      unlocked: listing.unlocked,
+      hasPartialData: listing.hasPartialData,
+      isDetectionValid: listing.isDetectionValid,
+      detection: listing.detection ?? null,
+      analysis: listing.analysis ?? null,
+      ai_analysis,
+      contact_details: ai_analysis.contact_details,
+      saved_at: new Date().toISOString(),
+    };
+  };
 
   const saveListingToDashboard = async (listingId) => {
     const listing = getListingById(listingId);

@@ -119,3 +119,11 @@ try {
 }
 
 Write-Output "Created $resolvedOutputPath"
+
+# Keep repo-root extension.zip in sync with public/extension.zip for distribution artifacts.
+$repoRootZip = Join-Path $extensionRoot "..\extension.zip"
+$resolvedRepoRootZip = [System.IO.Path]::GetFullPath($repoRootZip)
+if ($resolvedRepoRootZip -ne $resolvedOutputPath) {
+  Copy-Item -LiteralPath $resolvedOutputPath -Destination $resolvedRepoRootZip -Force
+  Write-Output "Synced $resolvedRepoRootZip"
+}

@@ -190,6 +190,205 @@
     return "";
   };
 
+  const cleanPhoneNumber = (value) => {
+    const raw = normalizeText(value);
+    if (!raw) {
+      return "";
+    }
+
+    // Reject reveal-button labels and non-phone UI copy.
+    if (
+      /prikaži|prikazi|show\s*(phone|number|broj)|pogledaj|otkrij|reveal/i.test(raw) &&
+      !/\d{6,}/.test(raw)
+    ) {
+      return "";
+    }
+
+    const decoded = raw.replace(/^tel:/i, "").replace(/\s+/g, " ").trim();
+    const digits = decoded.replace(/[^\d+]/g, "");
+    const digitCount = (digits.match(/\d/g) || []).length;
+
+    if (digitCount < 6) {
+      return "";
+    }
+
+    return decoded.replace(/[^\d+\s\-()/]/g, " ").replace(/\s+/g, " ").trim() || digits;
+  };
+
+  const extractTelHref = (element) => {
+    if (!element || !(element instanceof Element)) {
+      return "";
+    }
+
+    const href =
+      element.getAttribute?.("href") ||
+      element.closest?.("a[href^='tel:']")?.getAttribute("href") ||
+      "";
+    if (/^tel:/i.test(href)) {
+      try {
+        return cleanPhoneNumber(decodeURIComponent(href.replace(/^tel:/i, "")));
+      } catch (_error) {
+        return cleanPhoneNumber(href.replace(/^tel:/i, ""));
+      }
+    }
+
+    const dataPhone =
+      element.getAttribute?.("data-phone") ||
+      element.getAttribute?.("data-telefon") ||
+      element.getAttribute?.("data-number") ||
+      element.dataset?.phone ||
+      element.dataset?.telefon ||
+      "";
+    return cleanPhoneNumber(dataPhone);
+  };
+
+  const looksLikeRevealPhoneControl = (element) => {
+    if (!element || !(element instanceof Element)) {
+      return false;
+    }
+
+    const label = normalizeText(
+      [
+        element.getAttribute("aria-label"),
+        element.getAttribute("title"),
+        element.getAttribute("data-original-title"),
+        getText(element),
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
+
+    return /prikaži\s*(telefon|broj)|prikazi\s*(telefon|broj)|show\s*(phone|number)|otkrij\s*(telefon|broj)|pogledaj\s*(telefon|broj)|reveal\s*phone/i.test(
+      label,
+    );
+  };
+
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const revealHiddenPhoneNumbers = async (root = document) => {
+    const scope = root instanceof Element || root === document ? root : document;
+    const candidates = [
+      ...scope.querySelectorAll(
+        [
+          "a[href^='tel:']",
+          "button",
+          "[role='button']",
+          "[class*='phone' i]",
+          "[class*='telefon' i]",
+          "[class*='broj' i]",
+          "[data-phone]",
+          "[data-telefon]",
+          "[onclick*='phone' i]",
+          "[onclick*='telefon' i]",
+        ].join(", "),
+      ),
+    ];
+
+    let clicked = false;
+    for (const element of candidates) {
+      if (!looksLikeRevealPhoneControl(element)) {
+        continue;
+      }
+
+      try {
+        element.dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true, view: window }),
+        );
+        if (typeof element.click === "function") {
+          element.click();
+        }
+        clicked = true;
+      } catch (_error) {
+        // Keep scraping even if a portal blocks synthetic clicks.
+      }
+    }
+
+    if (clicked) {
+      await sleep(450);
+    }
+  };
+
+  const extractEmailAddress = (root = document) => {
+    const scope = root instanceof Element || root === document ? root : document;
+
+    for (const anchor of scope.querySelectorAll("a[href^='mailto:']")) {
+      const href = anchor.getAttribute("href") || "";
+      try {
+        const email = decodeURIComponent(href.replace(/^mailto:/i, ""))
+          .split("?")[0]
+          .trim();
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          return email;
+        }
+      } catch (_error) {
+        // ignore malformed mailto
+      }
+    }
+
+    const labeled = extractSpecValueByLabels(scope, [
+      /^e-?mail$/iu,
+      /^kontakt\s*e-?mail$/iu,
+      /^adresa\s*e-?mail$/iu,
+    ]);
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(labeled)) {
+      return labeled;
+    }
+
+    const haystack = getText(scope).slice(0, 2000);
+    const match = haystack.match(
+      /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
+    );
+    return match?.[0] ? normalizeText(match[0]) : "";
+  };
+
+  const deriveIsOwner = (advertiserType, haystack = "") => {
+    const text = `${advertiserType} ${haystack}`.toLowerCase();
+    if (/agencij|posrednik|broker|investitor|developer|prodavac\s*agenc/.test(text)) {
+      return false;
+    }
+    if (
+      /vlasnik|direktn|fizi[cč]ko\s*lice|privatni\s*(ogla|prod)|bez\s*proviz|od\s*vlasnika/.test(
+        text,
+      )
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  const extractPhoneFromRoot = (root = document) => {
+    const scope = root instanceof Element || root === document ? root : document;
+    const nodes = [
+      ...scope.querySelectorAll(
+        "a[href^='tel:'], [itemprop='telephone'], [class*='phone' i], [class*='telefon' i], [data-phone], [data-telefon]",
+      ),
+    ];
+
+    for (const node of nodes) {
+      const fromHref = extractTelHref(node);
+      if (fromHref) {
+        return fromHref;
+      }
+
+      const fromText = cleanPhoneNumber(getText(node));
+      if (fromText) {
+        return fromText;
+      }
+    }
+
+    const labeled = cleanPhoneNumber(
+      extractSpecValueByLabels(scope, [
+        /^telefon$/iu,
+        /^broj\s*telefona$/iu,
+        /^kontakt\s*telefon$/iu,
+        /^phone$/iu,
+        /^mobile$/iu,
+        /^mobilni$/iu,
+      ]),
+    );
+    return labeled;
+  };
+
   const getMetaContent = (...names) => {
     for (const name of names) {
       const escapedName = CSS.escape(name);
@@ -600,21 +799,27 @@
     };
   };
 
-  const extractAdvertiserInfo = (root = document) => {
+  const extractAdvertiserInfo = async (root = document) => {
     const scope = root instanceof Element || root === document ? root : document;
     const advertiserRoot =
       scope.querySelector(
-        ".advertiser-info, .advertiser, .seller-info, .owner-info, [class*='advertiser' i], [class*='oglasivac' i], [class*='oglašivač' i], [class*='agency' i], [class*='agencij' i]",
+        ".advertiser-info, .advertiser, .seller-info, .owner-info, .contact-info, [class*='advertiser' i], [class*='oglasivac' i], [class*='oglašivač' i], [class*='agency' i], [class*='agencij' i], [class*='kontakt' i], [class*='seller' i]",
       ) || scope;
+
+    await revealHiddenPhoneNumbers(advertiserRoot);
+    if (advertiserRoot !== scope) {
+      await revealHiddenPhoneNumbers(scope);
+    }
 
     const advertiserTypeRaw = extractSpecValueByLabels(advertiserRoot, [
       /^ogla(?:š|s)iva[cč]$/iu,
       /^tip\s+ogla(?:š|s)iva[cč]a$/iu,
       /^seller\s+type$/iu,
       /^advertiser$/iu,
+      /^tip\s+prodavca$/iu,
     ]);
 
-    const agencyName = pickStructuredText(
+    let agencyName = pickStructuredText(
       getFirstText(
         [
           ".advertiser-name",
@@ -622,7 +827,7 @@
           ".seller-name",
           "[class*='agency-name' i]",
           "[class*='advertiser-name' i]",
-          "[itemprop='name']",
+          "[class*='seller-name' i]",
         ],
         advertiserRoot,
       ),
@@ -630,43 +835,54 @@
         /^agencija$/iu,
         /^naziv\s+agencije$/iu,
         /^agency$/iu,
+        /^prodavac$/iu,
+        /^ogla(?:š|s)iva[cč]$/iu,
       ]),
     );
+
+    // Avoid grabbing the listing title via generic [itemprop=name] on the whole page.
+    if (!agencyName && advertiserRoot !== scope) {
+      agencyName = pickStructuredText(
+        getFirstText(["[itemprop='name']"], advertiserRoot),
+      );
+    }
 
     const ownerName = pickStructuredText(
       getFirstText(
         [".owner-name", "[class*='owner-name' i]", "[class*='vlasnik' i]"],
         advertiserRoot,
       ),
-      extractSpecValueByLabels(advertiserRoot, [/^vlasnik$/iu, /^ime\s+vlasnika$/iu]),
+      extractSpecValueByLabels(advertiserRoot, [
+        /^vlasnik$/iu,
+        /^ime\s+vlasnika$/iu,
+        /^fizi[cč]ko\s+lice$/iu,
+      ]),
     );
 
-    const phone = pickStructuredText(
-      getFirstText(
-        [
-          "a[href^='tel:']",
-          "[itemprop='telephone']",
-          "[class*='phone' i]",
-          "[class*='telefon' i]",
-        ],
-        advertiserRoot,
-      ),
-    );
+    const phone =
+      extractPhoneFromRoot(advertiserRoot) ||
+      extractPhoneFromRoot(scope) ||
+      "";
+
+    const contact_email =
+      extractEmailAddress(advertiserRoot) || extractEmailAddress(scope) || "";
 
     const advertiserHaystack = [
       advertiserTypeRaw,
       agencyName,
       ownerName,
-      getText(advertiserRoot).slice(0, 500),
+      getText(advertiserRoot).slice(0, 800),
     ]
       .filter(Boolean)
       .join(" ");
 
     let advertiser_type = normalizeText(advertiserTypeRaw);
     if (!advertiser_type) {
-      if (/agencij|posrednik|broker/i.test(advertiserHaystack)) {
+      if (/investitor/i.test(advertiserHaystack)) {
+        advertiser_type = "Investitor";
+      } else if (/agencij|posrednik|broker/i.test(advertiserHaystack)) {
         advertiser_type = "Agencija";
-      } else if (/vlasnik|direktno|privatni/i.test(advertiserHaystack)) {
+      } else if (/vlasnik|direktno|privatni|fizi[cč]ko/i.test(advertiserHaystack)) {
         advertiser_type = "Vlasnik";
       }
     }
@@ -677,20 +893,24 @@
         /agencij[ae]?\s*[\/|\-–—]\s*([A-Za-zÀ-ž0-9 .,&'-]{2,80})/iu,
       );
       if (slashMatch?.[1]) {
-        return {
-          agency_name: normalizeText(slashMatch[1]),
-          advertiser_type: advertiser_type || "Agencija",
-          owner_name: ownerName || "",
-          phone: phone || "",
-        };
+        agencyName = normalizeText(slashMatch[1]);
+        advertiser_type = advertiser_type || "Agencija";
       }
     }
+
+    // If DOM contact nodes exist, never invent placeholder copy — keep scraped values or "".
+    const is_owner = deriveIsOwner(advertiser_type, advertiserHaystack);
+    const phone_number = cleanPhoneNumber(phone);
 
     return {
       agency_name: agencyName || "",
       advertiser_type: advertiser_type || "",
       owner_name: ownerName || "",
-      phone: phone || "",
+      phone: phone_number || phone || "",
+      phone_number: phone_number || phone || "",
+      contact_email: contact_email || "",
+      email: contact_email || "",
+      is_owner,
     };
   };
 
@@ -742,12 +962,13 @@
     }
   };
 
-  const extractHaloOglasiDomListing = () => {
+  const extractHaloOglasiDomListing = async () => {
     if (!isHaloOglasiHost()) {
       return null;
     }
 
-    const mainRoot = withoutSimilarListings(getMainListingRoot()) ?? document.body;
+    const mainRootLive = getMainListingRoot() ?? document.body;
+    const mainRoot = withoutSimilarListings(mainRootLive) ?? mainRootLive;
     const title = pickStructuredText(
       getFirstText([".page-title", "h1.page-title", "h1"], mainRoot),
       getFirstText(TITLE_SELECTORS),
@@ -800,14 +1021,27 @@
         Object.entries(extractListingSpecs(mainRoot)).filter(([, value]) => Boolean(value)),
       ),
     };
-    const advertiserFromMain = extractAdvertiserInfo(mainRoot);
-    const advertiserFromPage = extractAdvertiserInfo(document);
+    const advertiserFromMain = await extractAdvertiserInfo(mainRootLive);
+    const advertiserFromPage = await extractAdvertiserInfo(document);
     const advertiser = {
       agency_name: advertiserFromMain.agency_name || advertiserFromPage.agency_name || "",
       advertiser_type:
         advertiserFromMain.advertiser_type || advertiserFromPage.advertiser_type || "",
       owner_name: advertiserFromMain.owner_name || advertiserFromPage.owner_name || "",
       phone: advertiserFromMain.phone || advertiserFromPage.phone || "",
+      phone_number:
+        advertiserFromMain.phone_number ||
+        advertiserFromPage.phone_number ||
+        advertiserFromMain.phone ||
+        advertiserFromPage.phone ||
+        "",
+      contact_email:
+        advertiserFromMain.contact_email || advertiserFromPage.contact_email || "",
+      email: advertiserFromMain.email || advertiserFromPage.email || "",
+      is_owner:
+        typeof advertiserFromMain.is_owner === "boolean"
+          ? advertiserFromMain.is_owner
+          : Boolean(advertiserFromPage.is_owner),
     };
 
     return {
@@ -826,6 +1060,10 @@
       advertiser_type: advertiser.advertiser_type || "",
       owner_name: advertiser.owner_name || "",
       phone: advertiser.phone || "",
+      phone_number: advertiser.phone_number || advertiser.phone || "",
+      contact_email: advertiser.contact_email || "",
+      email: advertiser.email || advertiser.contact_email || "",
+      is_owner: Boolean(advertiser.is_owner),
       listing_url: window.location.href,
       listing_id: extractListingIdFromUrl(window.location.href),
     };
@@ -968,7 +1206,56 @@
     return structuredNodes.some(isRealEstateOffer);
   };
 
-  const buildResult = () => {
+  const mergeAdvertiserFields = (...sources) => {
+    const merged = {
+      agency_name: "",
+      advertiser_type: "",
+      owner_name: "",
+      phone: "",
+      phone_number: "",
+      contact_email: "",
+      email: "",
+      is_owner: false,
+    };
+
+    for (const source of sources) {
+      if (!source || typeof source !== "object") {
+        continue;
+      }
+
+      merged.agency_name = merged.agency_name || source.agency_name || "";
+      merged.advertiser_type = merged.advertiser_type || source.advertiser_type || "";
+      merged.owner_name = merged.owner_name || source.owner_name || "";
+      merged.phone = merged.phone || source.phone || source.phone_number || "";
+      merged.phone_number =
+        merged.phone_number || source.phone_number || source.phone || "";
+      merged.contact_email =
+        merged.contact_email || source.contact_email || source.email || "";
+      merged.email = merged.email || source.email || source.contact_email || "";
+    }
+
+    if (!merged.phone_number && merged.phone) {
+      merged.phone_number = merged.phone;
+    }
+    if (!merged.phone && merged.phone_number) {
+      merged.phone = merged.phone_number;
+    }
+    if (!merged.email && merged.contact_email) {
+      merged.email = merged.contact_email;
+    }
+    if (!merged.contact_email && merged.email) {
+      merged.contact_email = merged.email;
+    }
+
+    merged.is_owner = deriveIsOwner(
+      merged.advertiser_type,
+      [merged.agency_name, merged.owner_name].filter(Boolean).join(" "),
+    );
+
+    return merged;
+  };
+
+  const buildResult = async () => {
     const pageUrl = window.location.href;
     const portalName = window.location.hostname;
     const jsonLd = readJsonLd();
@@ -977,7 +1264,9 @@
     const offerNode = findOffer(structuredNodes);
     const jsonLdTypes = Array.from(new Set(structuredNodes.flatMap(getTypes)));
     const pageText = getPageText();
-    const haloListing = extractHaloOglasiDomListing();
+    const haloListing = await extractHaloOglasiDomListing();
+    const pageAdvertiser = await extractAdvertiserInfo(getMainListingRoot() ?? document);
+    const advertiser = mergeAdvertiserFields(haloListing, pageAdvertiser);
     const attributeArea = extractAttributeArea(document);
     const title = pickStructuredText(
       haloListing?.title,
@@ -1180,10 +1469,14 @@
         grejanje: haloListing?.grejanje || haloListing?.heating || "",
         rooms: haloListing?.rooms || "",
         property_type: haloListing?.property_type || "",
-        agency_name: haloListing?.agency_name || "",
-        advertiser_type: haloListing?.advertiser_type || "",
-        owner_name: haloListing?.owner_name || "",
-        phone: haloListing?.phone || "",
+        agency_name: advertiser.agency_name || "",
+        advertiser_type: advertiser.advertiser_type || "",
+        owner_name: advertiser.owner_name || "",
+        phone: advertiser.phone || "",
+        phone_number: advertiser.phone_number || advertiser.phone || "",
+        contact_email: advertiser.contact_email || "",
+        email: advertiser.email || advertiser.contact_email || "",
+        is_owner: Boolean(advertiser.is_owner),
       },
     };
   };
