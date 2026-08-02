@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import AuthModal, { type AuthMode } from './AuthModal'
 import { supabase } from '@/lib/supabase/client'
@@ -57,6 +59,8 @@ function publishExtensionSession(session: unknown) {
 }
 
 export default function Header() {
+  const pathname = usePathname()
+  const isDashboard = pathname === '/dashboard'
   const [dark, setDark] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -207,7 +211,7 @@ export default function Header() {
 
   return (
     <header className="site-header">
-      <a href="#" className="logo">
+      <Link href="/" className="logo">
         <div className="logo-icon">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 21h18M3 18h18M6 18V9M10 18V9M14 18V9M18 18V9M4 9h16M12 3l8 6H4l8-6z"/>
@@ -217,9 +221,21 @@ export default function Header() {
           <span className="logo-primary">Balkan Real Estate</span>
           <span className="logo-secondary">Intelligence Platform</span>
         </div>
-      </a>
+      </Link>
 
       <div className="header-controls desktop-header-controls">
+        {!authLoading && user ? (
+          <nav className="header-nav" aria-label="Glavna navigacija">
+            <Link
+              href="/dashboard"
+              className={isDashboard ? 'header-nav-link header-nav-link-active' : 'header-nav-link'}
+              aria-current={isDashboard ? 'page' : undefined}
+            >
+              Dashboard
+            </Link>
+          </nav>
+        ) : null}
+
         <div className="header-actions" aria-live="polite">
           {authLoading ? (
             <div className="header-auth-skeleton" aria-label="Provera sesije" />
@@ -296,6 +312,23 @@ export default function Header() {
           className={mobileMenuOpen ? 'mobile-menu-panel mobile-menu-panel-open' : 'mobile-menu-panel'}
           aria-hidden={!mobileMenuOpen}
         >
+          {!authLoading && user ? (
+            <nav className="mobile-menu-nav" aria-label="Glavna navigacija">
+              <Link
+                href="/dashboard"
+                className={
+                  isDashboard
+                    ? 'mobile-menu-nav-link mobile-menu-nav-link-active'
+                    : 'mobile-menu-nav-link'
+                }
+                aria-current={isDashboard ? 'page' : undefined}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
+            </nav>
+          ) : null}
+
           <div className="mobile-menu-section" aria-live="polite">
             {authLoading ? (
               <div className="header-auth-skeleton mobile-menu-skeleton" aria-label="Provera sesije" />

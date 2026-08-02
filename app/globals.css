@@ -163,6 +163,129 @@ html.dark .logo-primary { color: var(--text-dark); }
   color: var(--accent);
 }
 
+/* ─── Header Nav ─────────────────────────────────────────── */
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 4px;
+}
+
+.header-nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  color: var(--text-light);
+  transition:
+    color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+html.dark .header-nav-link {
+  color: var(--text-dark);
+}
+
+.header-nav-link:hover {
+  background: rgba(217, 119, 6, 0.1);
+  color: var(--accent);
+}
+
+html.dark .header-nav-link:hover {
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+}
+
+.header-nav-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.header-nav-link-active {
+  color: #2563eb;
+  background: rgba(59, 130, 246, 0.12);
+}
+
+html.dark .header-nav-link-active {
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.18);
+}
+
+.header-nav-link-active::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 4px;
+  height: 2px;
+  border-radius: 9999px;
+  background: #3b82f6;
+}
+
+.mobile-menu-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mobile-menu-nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+html.dark .mobile-menu-nav-link {
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.16);
+}
+
+.mobile-menu-nav-link:hover,
+.mobile-menu-nav-link:active {
+  transform: translateY(-1px);
+  background: rgba(59, 130, 246, 0.2);
+}
+
+.mobile-menu-nav-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
+}
+
+.mobile-menu-nav-link-active {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.24);
+  color: #1d4ed8;
+}
+
+html.dark .mobile-menu-nav-link-active {
+  color: #bfdbfe;
+}
+
 /* ─── Header Auth Controls ───────────────────────────────── */
 .header-controls {
   display: flex;
