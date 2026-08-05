@@ -89,6 +89,45 @@ Errors use this shape:
 
 Stable error codes: `invalid_json`, `invalid_payload`, `missing_auth`, `invalid_session`, `configuration`, `rate_limited`, `provider_error`.
 
+## Save listing API
+
+`POST /api/scan/save` persists an analyzed listing for the authenticated user.
+
+### Authentication
+
+Same Bearer token as analyze. Credits are **not** deducted here (unlock already charges).
+
+### Request body (key fields)
+
+```json
+{
+  "title": "Stan na Vracaru",
+  "location": "Beograd, Vracar",
+  "price": "120.000 €",
+  "portal_url": "https://example.com/oglas/123",
+  "ai_analysis": {},
+  "contact_details": {},
+  "detection": { "listing": { "listing_url": "https://example.com/oglas/123" } }
+}
+```
+
+`portal_url` (or `listing_url` / `detection.listing.listing_url`) is required.
+
+### Success response
+
+```json
+{
+  "ok": true,
+  "saved_property_id": 1,
+  "listing_id": 1,
+  "credits_remaining": 4
+}
+```
+
+### Save error codes
+
+`invalid_json`, `invalid_payload`, `missing_auth`, `invalid_session`, `configuration`, `listing_conflict`, `database_error`.
+
 ## Environment
 
 Server-side Claude integration requires `ANTHROPIC_API_KEY`. `ANTHROPIC_MODEL` is optional and defaults to the current Sonnet model configured in the service.

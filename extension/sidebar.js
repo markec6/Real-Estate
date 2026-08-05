@@ -2256,7 +2256,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="analysis-grid analysis-feed">
           ${renderAnalysisFeed(listing, analysis)}
           <section class="analysis-module action-module" aria-label="Akcije">
-            <button class="save-dashboard-button" type="button" data-listing-id="${listing.id}">Sačuvaj u Dashboard (-1 kredit)</button>
+            <button class="save-dashboard-button" type="button" data-listing-id="${listing.id}">Sačuvaj u Dashboard</button>
             <p class="action-feedback" id="feedback-${listing.id}" aria-live="polite"></p>
           </section>
         </div>
@@ -3318,12 +3318,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const buildDashboardSavePayload = (listing) => {
     const ai_analysis = buildAiAnalysisForSave(listing);
+    const detectedListing =
+      listing?.detection?.listing && typeof listing.detection.listing === "object"
+        ? listing.detection.listing
+        : null;
+    const portal_url =
+      detectedListing?.listing_url ||
+      detectedListing?.portal_url ||
+      "";
 
     return {
       id: listing.id,
       title: listing.title,
       location: listing.location,
       price: listing.price,
+      portal_url,
+      listing_url: portal_url,
+      source_portal: detectedListing?.portal_name || "",
+      portal_name: detectedListing?.portal_name || "",
+      original_id_on_portal: detectedListing?.listing_id ?? null,
+      listing_id: detectedListing?.listing_id ?? null,
+      description: detectedListing?.description || "",
       unlocked: listing.unlocked,
       hasPartialData: listing.hasPartialData,
       isDetectionValid: listing.isDetectionValid,
@@ -3333,6 +3348,29 @@ document.addEventListener("DOMContentLoaded", () => {
       contact_details: ai_analysis.contact_details,
       saved_at: new Date().toISOString(),
     };
+  };
+
+  const getSaveErrorMessage = (status, data) => {
+    const apiMessage =
+      typeof data?.error?.message === "string" ? data.error.message.trim() : "";
+
+    if (apiMessage) {
+      return apiMessage;
+    }
+
+    if (status === 401) {
+      return "Prijavite se na sajtu da biste sačuvali oglas.";
+    }
+
+    if (status === 409) {
+      return "Ovaj oglas nije moguće sačuvati (sukob sa postojećim zapisom).";
+    }
+
+    if (status === 400) {
+      return "Podaci oglasa nisu potpuni za čuvanje.";
+    }
+
+    return "Čuvanje oglasa nije uspelo. Pokušajte ponovo.";
   };
 
   const saveListingToDashboard = async (listingId) => {
@@ -3357,29 +3395,67 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const accessToken = await getAnalysisAccessToken();
-      const headers = {
-        "Content-Type": "application/json",
-      };
 
-      if (accessToken) {
-        headers.Authorization = `Bearer ${accessToken}`;
+      if (!accessToken) {
+        setActionFeedback(
+          listingId,
+          "Prijavite se na sajtu da biste sačuvali oglas.",
+        );
+        return;
+      }
+
+      if (!payload.portal_url) {
+        setActionFeedback(
+          listingId,
+          "Nedostaje URL oglasa. Ponovo skenirajte stranicu.",
+        );
+        return;
       }
 
       const response = await fetch(SAVE_API_URL, {
         method: "POST",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        throw new Error(`Save failed with status ${response.status}`);
+      let data = null;
+
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok || data?.ok !== true) {
+        setActionFeedback(
+          listingId,
+          getSaveErrorMessage(response.status, data),
+        );
+        return;
+      }
+
+      if (
+        typeof data.credits_remaining === "number" &&
+        currentProfile &&
+        currentUser
+      ) {
+        currentProfile = {
+          ...currentProfile,
+          credits_remaining: data.credits_remaining,
+        };
+        renderAuthenticatedProfile(currentProfile, currentUser);
       }
 
       setActionFeedback(listingId, "Oglas je sačuvan na Dashboard.");
-    } catch (_error) {
-      // Endpoint may not exist yet — keep full payload ready and confirm UI save intent.
-      console.warn("Dashboard save endpoint unavailable; payload retained in memory.", payload);
-      setActionFeedback(listingId, "Oglas je sačuvan na Dashboard.");
+    } catch (error) {
+      console.error("Dashboard save failed.", error);
+      setActionFeedback(
+        listingId,
+        "Čuvanje oglasa nije uspelo. Pokušajte ponovo.",
+      );
     } finally {
       if (saveButton) {
         saveButton.disabled = false;
